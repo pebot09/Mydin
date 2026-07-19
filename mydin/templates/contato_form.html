@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block titulo %}{{ c.nome }}{% endblock %}
+{% block conteudo %}
+<h1>{{ c.nome }}</h1>
+
+<form method="post" class="painel form-grade">
+  <label>Nome <input type="text" name="nome" value="{{ c.nome }}"></label>
+  <label>CPF mascarado <input type="text" name="cpf_mascarado" value="{{ c.cpf_mascarado or '' }}"></label>
+  <label>Tipo
+    <select name="tipo">
+      {% for t in ['aluno','cliente_musica','fixo','amigo_multi','familia','interno','desconhecido'] %}
+      <option value="{{ t }}" {% if c.tipo == t %}selected{% endif %}>{{ t }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label>Paga pela mensalidade do aluno
+    <select name="aluno_id">
+      <option value="">—</option>
+      {% for a in alunos %}<option value="{{ a.id }}" {% if c.aluno_id == a.id %}selected{% endif %}>{{ a.nome }}</option>{% endfor %}
+    </select>
+  </label>
+  <label class="linha"><input type="checkbox" name="sempre_revisar" {% if c.sempre_revisar %}checked{% endif %}>
+    Sempre revisar (multi-relação — nunca classificar automaticamente)</label>
+  <label class="linha"><input type="checkbox" name="reclassificar" value="1" checked>
+    Reaplicar classificação automática nos lançamentos não confirmados</label>
+  <button type="submit">Salvar</button>
+</form>
+
+<section class="painel">
+  <h2>Regra permanente de categoria</h2>
+  {% if regras %}
+    {% for r in regras %}
+    <p>Todo lançamento deste contato → <strong>{{ r.categoria_id }}</strong>
+      <form method="post" action="{{ url_for('mydin.regra_excluir', rid=r.id) }}" class="inline">
+        <input type="hidden" name="voltar" value="{{ url_for('mydin.contato_edit', cid=c.id) }}">
+        <button type="submit" class="mini-btn">remover</button>
+      </form></p>
+    {% endfor %}
+  {% endif %}
+  <form method="post" action="{{ url_for('mydin.contato_regra', cid=c.id) }}" class="inline">
+    <select name="categoria_id">
+      <option value="">— categoria —</option>
+      {% for k in cats %}<option value="{{ k.id }}">{{ k.id }} · {{ k.nome }}</option>{% endfor %}
+    </select>
+    <button type="submit">Criar regra</button>
+  </form>
+  <p class="mini">Ex.: roommate → MOR (tudo que vai pra ele é moradia, mesmo fragmentado) ·
+    terapeuta → TER · mãe ajudando na terapia → TER (entra positivo e deixa a terapia líquida) ·
+    Carolina (ateliê) → REP · Carlos Trilha (estúdio) → EST.</p>
+</section>
+
+<section class="painel">
+  <h2>Medicinas</h2>
+  <form method="post" action="{{ url_for('mydin.contato_vendedor', cid=c.id) }}">
+    {% if eh_vendedor %}
+      <p>✓ Está na lista de vendedores conhecidos (pagamentos viram MED automático).</p>
+      <button type="submit" name="remover" value="1">Remover da lista</button>
+    {% else %}
+      <button type="submit">Marcar como vendedor de medicina conhecido</button>
+    {% endif %}
+  </form>
+</section>
+
+<section class="painel">
+  <h2>Últimos lançamentos</h2>
+  <table>
+    <tr><th>Data</th><th>Descrição</th><th>Cat.</th><th class="num">Valor</th></tr>
+    {% for t in txs %}
+    <tr>
+      <td class="nowrap">{{ t.data|data_br }}</td>
+      <td class="mini"><a href="{{ url_for('mydin.transacao_edit', tid=t.id) }}">{{ (t.descricao or '')[:70] }}</a></td>
+      <td>{{ t.categoria_id or '—' }}</td>
+      <td class="num {{ 'pos' if t.valor_cent > 0 else 'neg' }}">{{ t.valor_cent|moeda }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</section>
+{% endblock %}

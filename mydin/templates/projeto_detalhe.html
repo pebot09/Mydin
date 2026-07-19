@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% block titulo %}{{ r.projeto.titulo }}{% endblock %}
+{% block conteudo %}
+{% set p = r.projeto %}
+<div class="cab">
+  <h1>{{ p.titulo }} <span class="tag st-{{ p.status }}">{{ p.status.replace('_', ' ') }}</span></h1>
+  <a class="botao" href="{{ url_for('mydin.projeto_pdf', pid=p.id) }}">Gerar PDF do orçamento</a>
+</div>
+
+<section class="cards">
+  <div class="card"><div class="rotulo">Orçado</div><div class="valorzao">{{ p.valor_orcado_cent|moeda }}</div></div>
+  <div class="card"><div class="rotulo">Recebido</div><div class="valorzao">{{ r.recebido_cent|moeda }}</div>
+    <div class="mini">vincule entradas ao projeto na tela da transação</div></div>
+  <div class="card"><div class="rotulo">Horas</div><div class="valorzao">{{ '%.1f'|format(r.horas) }}h</div>
+    {% if r.valor_hora %}<div class="mini"><strong>R$ {{ '%.0f'|format(r.valor_hora) }}/hora real</strong></div>{% endif %}</div>
+</section>
+
+<div class="colunas">
+<form method="post" class="painel form-grade">
+  <h2>Dados</h2>
+  <label>Título <input type="text" name="titulo" value="{{ p.titulo }}"></label>
+  <label>Cliente
+    <select name="cliente_id"><option value="">—</option>
+      {% for c in clientes %}<option value="{{ c.id }}" {% if p.cliente_id == c.id %}selected{% endif %}>{{ c.nome }}</option>{% endfor %}
+    </select>
+  </label>
+  <label>Modalidade
+    <select name="modalidade">{% for m in modalidades %}<option value="{{ m }}" {% if p.modalidade == m %}selected{% endif %}>{{ m.replace('_', ' ') }}</option>{% endfor %}</select>
+  </label>
+  <label>Valor orçado (R$) <input type="text" name="valor_orcado" value="{{ '%.2f'|format(p.valor_orcado_cent / 100)|replace('.', ',') }}"></label>
+  <label>Sinal (R$) <input type="text" name="valor_sinal" value="{{ '%.2f'|format(p.valor_sinal_cent / 100)|replace('.', ',') }}"></label>
+  <label>Saldo (R$) <input type="text" name="valor_saldo" value="{{ '%.2f'|format(p.valor_saldo_cent / 100)|replace('.', ',') }}"></label>
+  <label class="linha"><input type="checkbox" name="sinal_pago" {% if p.sinal_pago %}checked{% endif %}> Sinal (50%) pago</label>
+  <label class="linha"><input type="checkbox" name="saldo_pago" {% if p.saldo_pago %}checked{% endif %}> Saldo (50%) pago</label>
+  <label>Descrição <input type="text" name="descricao" value="{{ p.descricao or '' }}"></label>
+  <button type="submit">Salvar</button>
+</form>
+
+<section class="painel">
+  <h2>Status</h2>
+  <form method="post" action="{{ url_for('mydin.projeto_status', pid=p.id) }}" class="inline">
+    {% for s in ['orcamento','aprovado','em_andamento','concluido'] %}
+      <button type="submit" name="status" value="{{ s }}" {% if p.status == s %}disabled{% endif %}>{{ s.replace('_', ' ') }}</button>
+    {% endfor %}
+  </form>
+  {% if p.status == 'concluido' %}
+  <p class="mini">Concluído em {{ p.concluido_em|data_br }} —
+    {{ '%.1f'|format(r.horas) }}h · {{ r.recebido_cent|moeda }} recebidos
+    {% if r.valor_hora %} · <strong>R$ {{ '%.0f'|format(r.valor_hora) }}/hora real</strong>{% endif %}</p>
+  {% endif %}
+
+  <h2>Parcelamento</h2>
+  <form method="post" action="{{ url_for('mydin.projeto_parcelas', pid=p.id) }}" class="inline">
+    <input type="number" name="n_parcelas" min="1" max="24" placeholder="nº" style="width:4em">
+    × <input type="text" name="valor_parcela" placeholder="R$ 500,00" style="width:7em">
+    a partir de <input type="date" name="primeira_data">
+    <button type="submit">Gerar pendências</button>
+  </form>
+  {% if parcelas %}
+  <table>
+    <tr><th>Vencimento</th><th class="num">Valor</th><th>Status</th><th></th></tr>
+    {% for pa in parcelas %}
+    <tr>
+      <td>{{ pa.data_esperada|data_br }} <span class="mini">{{ pa.obs }}</span></td>
+      <td class="num">{{ pa.valor_esperado_cent|moeda }}</td>
+      <td>{{ pa.status }}</td>
+      <td>{% if pa.status == 'aberta' %}
+        <form method="post" action="{{ url_for('mydin.pendencia_status', pid=pa.id) }}" class="inline">
+          <input type="hidden" name="voltar" value="{{ url_for('mydin.projeto_detalhe', pid=p.id) }}">
+          <button type="submit" name="status" value="paga" class="mini-btn">recebida</button>
+        </form>{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% endif %}
+</section>
+</div>
+
+<section class="painel">
+  <h2>Registro de tempo</h2>
+  <div class="colunas">
+    <div>
+      <h3>Cronômetro</h3>
+      <div class="crono" data-projeto="{{ p.id }}">
+        <div class="crono-display" id="crono-display">00:00:00</div>
+        <button type="button" id="crono-toggle">▶ Iniciar</button>
+        <form method="post" action="{{ url_for('mydin.projeto_tempo', pid=p.id) }}" id="crono-form" class="inline">
+          <input type="hidden" name="metodo" value="cronometro">
+          <input type="hidden" name="segundos" id="crono-segundos" value="0">
+          <input type="text" name="descricao" placeholder="o que foi feito">
+          <button type="submit" id="crono-salvar" disabled>Salvar sessão</button>
+        </form>
+      </div>
+    </div>
+    <div>
+      <h3>Lançamento manual</h3>
+      <form method="post" action="{{ url_for('mydin.projeto_tempo', pid=p.id) }}" class="form-grade">
+        <input type="hidden" name="metodo" value="manual">
+        <label>Data <input type="date" name="data"></label>
+        <label>Horas <input type="text" name="horas" placeholder="2,5" required></label>
+        <label>Descrição <input type="text" name="descricao"></label>
+        <button type="submit">Registrar</button>
+      </form>
+    </div>
+  </div>
+  {% if tempos %}
+  <table>
+    <tr><th>Data</th><th class="num">Horas</th><th>Descrição</th><th>Método</th><th></th></tr>
+    {% for t in tempos %}
+    <tr>
+      <td>{{ t.data|data_br }}</td><td class="num">{{ '%.2f'|format(t.horas) }}</td>
+      <td class="mini">{{ t.descricao or '' }}</td><td class="mini">{{ t.metodo }}</td>
+      <td><form method="post" action="{{ url_for('mydin.projeto_tempo_excluir', pid=p.id, rid=t.id) }}" class="inline"
+            onsubmit="return confirm('Excluir este registro de tempo?')">
+          <button type="submit" class="mini-btn">excluir</button></form></td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% endif %}
+</section>
+
+{% if txs %}
+<section class="painel">
+  <h2>Transações vinculadas</h2>
+  <table>
+    <tr><th>Data</th><th>Descrição</th><th class="num">Valor</th></tr>
+    {% for t in txs %}
+    <tr><td>{{ t.data|data_br }}</td>
+        <td class="mini"><a href="{{ url_for('mydin.transacao_edit', tid=t.id) }}">{{ (t.descricao or '')[:70] }}</a></td>
+        <td class="num {{ 'pos' if t.valor_cent > 0 else 'neg' }}">{{ t.valor_cent|moeda }}</td></tr>
+    {% endfor %}
+  </table>
+</section>
+{% endif %}
+{% endblock %}

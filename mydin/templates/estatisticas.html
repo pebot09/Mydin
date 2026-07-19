@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block titulo %}Estatísticas{% endblock %}
+{% block conteudo %}
+<h1>Estatísticas</h1>
+
+{% if e.serie %}
+<section class="cards">
+  <div class="card">
+    <div class="rotulo">Proporção música × cerâmica</div>
+    <div class="valorzao">{{ '%.0f'|format(e.prop_mus) }} / {{ '%.0f'|format(e.prop_ens) }}</div>
+    <div class="mini">música é mais volátil; o ensino é a base estável</div>
+  </div>
+  <div class="card">
+    <div class="rotulo">Melhor mês de receita</div>
+    <div class="valorzao">{{ e.melhor_receita.mes|mes_br }}</div>
+    <div class="mini">{{ e.melhor_receita.receita|moeda }} · pior: {{ e.pior_receita.mes|mes_br }} ({{ e.pior_receita.receita|moeda }})</div>
+  </div>
+  <div class="card">
+    <div class="rotulo">Melhor mês de sobra</div>
+    <div class="valorzao">{{ e.melhor_sobra.mes|mes_br }}</div>
+    <div class="mini">{{ e.melhor_sobra.sobra|moeda }} · pior: {{ e.pior_sobra.mes|mes_br }} ({{ e.pior_sobra.sobra|moeda }})</div>
+  </div>
+</section>
+
+<section class="painel">
+  <h2>Patrimônio (fim de cada mês)</h2>
+  <div class="grafico" data-tipo="linha"
+       data-serie='[{% for s in e.serie %}{"m":"{{ s.mes }}","v":{{ s.patrimonio }}}{{ "," if not loop.last }}{% endfor %}]'></div>
+</section>
+
+<section class="painel">
+  <h2>Receita × gasto por mês</h2>
+  <div class="grafico" data-tipo="barras"
+       data-serie='[{% for s in e.serie %}{"m":"{{ s.mes }}","a":{{ s.receita }},"b":{{ s.gasto }}}{{ "," if not loop.last }}{% endfor %}]'></div>
+  <p class="mini">■ receita (ensino + música) · ■ gasto categorizado — lembrando: o termômetro é o patrimônio.</p>
+</section>
+
+<section class="painel">
+  <h2>Sazonalidade — receita média por mês do calendário</h2>
+  <div class="grafico" data-tipo="barras"
+       data-serie='[{% for s in e.sazonal %}{"m":"{{ s.mes }}","a":{{ s.media }}}{{ "," if not loop.last }}{% endfor %}]'></div>
+  <p class="mini">Início do ano costuma ser apertado; dezembro e abril são picos de música.</p>
+</section>
+
+<section class="painel">
+  <h2>Série mensal</h2>
+  <div class="rolagem">
+  <table class="lista">
+    <tr><th>Mês</th><th class="num">Ensino</th><th class="num">Música</th><th class="num">Receita</th>
+        <th class="num">Gasto</th><th class="num">Sobra</th><th class="num">Patrimônio</th></tr>
+    {% for s in e.serie|reverse %}
+    <tr>
+      <td>{{ s.mes|mes_br }}</td>
+      <td class="num">{{ s.receita_ens|moeda }}</td>
+      <td class="num">{{ s.receita_mus|moeda }}</td>
+      <td class="num">{{ s.receita|moeda }}</td>
+      <td class="num">{{ s.gasto|moeda }}</td>
+      <td class="num {{ 'pos' if s.sobra >= 0 else 'neg' }}">{{ s.sobra|moeda }}</td>
+      <td class="num"><strong>{{ s.patrimonio|moeda }}</strong></td>
+    </tr>
+    {% endfor %}
+  </table>
+  </div>
+</section>
+{% else %}
+<p class="painel">Sem dados ainda — <a href="{{ url_for('mydin.importar') }}">importe seus OFX</a>.</p>
+{% endif %}
+{% endblock %}

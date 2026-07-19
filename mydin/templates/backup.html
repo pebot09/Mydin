@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block titulo %}Backup{% endblock %}
+{% block conteudo %}
+<h1>Backup</h1>
+
+<section class="painel">
+  <h2>Exportar</h2>
+  <p class="nota">Gera um .xlsx com abas separadas (transações, contatos, alunos, projetos, categorias…),
+  nome com timestamp. Guarde em local seguro — são dados financeiros sensíveis.</p>
+  <a class="botao" href="{{ url_for('mydin.backup_exportar') }}">⬇ Exportar backup .xlsx</a>
+</section>
+
+<section class="painel">
+  <h2>Restaurar</h2>
+  <p class="nota">Restaura o banco a partir de um backup exportado por este app.
+  <strong>Substitui TODOS os dados atuais.</strong></p>
+  <form method="post" enctype="multipart/form-data"
+        onsubmit="return confirm('Restaurar vai APAGAR os dados atuais e substituí-los pelo backup. Continuar?')">
+    <input type="file" name="arquivo" accept=".xlsx" required>
+    <label class="linha"><input type="checkbox" name="confirmar" value="1" required>
+      Entendo que os dados atuais serão substituídos</label>
+    <button type="submit" class="perigo">Restaurar backup</button>
+  </form>
+</section>
+{% endblock %}

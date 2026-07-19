@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block titulo %}Projetos{% endblock %}
+{% block conteudo %}
+<h1>Projetos de música</h1>
+
+<details class="painel">
+  <summary>+ Novo orçamento</summary>
+  <form method="post" action="{{ url_for('mydin.projeto_novo') }}" class="form-grade">
+    <label>Título <input type="text" name="titulo" required></label>
+    <label>Cliente
+      <select name="cliente_id"><option value="">—</option>
+        {% for c in clientes %}<option value="{{ c.id }}">{{ c.nome }}</option>{% endfor %}
+      </select>
+    </label>
+    <label>Modalidade
+      <select name="modalidade">{% for m in modalidades %}<option value="{{ m }}">{{ m.replace('_', ' ') }}</option>{% endfor %}</select>
+    </label>
+    <label>Valor orçado (R$) <input type="text" name="valor_orcado" placeholder="0,00"></label>
+    <label>Sinal (R$ — vazio = 50%) <input type="text" name="valor_sinal"></label>
+    <label>Descrição <input type="text" name="descricao"></label>
+    <button type="submit">Criar orçamento</button>
+  </form>
+</details>
+
+<table class="lista">
+  <tr><th>Projeto</th><th>Cliente</th><th>Modalidade</th><th>Status</th><th class="num">Orçado</th><th class="num">Recebido</th><th class="num">Horas</th></tr>
+  {% for p in projetos %}
+  <tr>
+    <td><a href="{{ url_for('mydin.projeto_detalhe', pid=p.id) }}">{{ p.titulo }}</a></td>
+    <td>{{ p.cliente_nome or '—' }}</td>
+    <td>{{ p.modalidade.replace('_', ' ') }}</td>
+    <td><span class="tag st-{{ p.status }}">{{ p.status.replace('_', ' ') }}</span></td>
+    <td class="num">{{ p.valor_orcado_cent|moeda }}</td>
+    <td class="num">{{ p.recebido|moeda }}</td>
+    <td class="num">{{ '%.1f'|format(p.horas) }}h</td>
+  </tr>
+  {% endfor %}
+</table>
+
+{% if concluidos %}
+<section class="painel">
+  <h2>Comparativo — valor/hora real (concluídos)</h2>
+  <table>
+    <tr><th>Projeto</th><th>Modalidade</th><th class="num">Horas</th><th class="num">Recebido</th><th class="num">R$/hora</th></tr>
+    {% for r in concluidos %}
+    <tr>
+      <td>{{ r.projeto.titulo }}</td>
+      <td>{{ r.projeto.modalidade.replace('_', ' ') }}</td>
+      <td class="num">{{ '%.1f'|format(r.horas) }}</td>
+      <td class="num">{{ r.recebido_cent|moeda }}</td>
+      <td class="num">{% if r.valor_hora %}R$ {{ '%.0f'|format(r.valor_hora) }}{% else %}—{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% if medias %}
+  <p class="mini">Média por modalidade:
+    {% for m, v in medias.items() %}<strong>{{ m.replace('_', ' ') }}</strong> R$ {{ '%.0f'|format(v) }}/h{{ ' · ' if not loop.last }}{% endfor %}
+  </p>
+  {% endif %}
+</section>
+{% endif %}
+{% endblock %}

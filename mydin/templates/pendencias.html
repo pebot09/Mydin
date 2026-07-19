@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block titulo %}Contas a receber{% endblock %}
+{% block conteudo %}
+<h1>Contas a receber</h1>
+
+<section class="painel">
+  <h2>Mensalidades pendentes (inferidas do padrão)</h2>
+  {% if mensalidades %}
+  <ul>{% for a in mensalidades %}
+    <li>{{ a.nome }} <span class="mini">({{ a.turma|turma }})</span> — cota {{ a.valor_cota_cent|moeda }}</li>
+  {% endfor %}</ul>
+  {% else %}<p class="mini">Todos os alunos ativos já pagaram este mês ✓</p>{% endif %}
+</section>
+
+<section class="painel">
+  <h2>Pendências registradas</h2>
+  <details>
+    <summary>+ Nova pendência</summary>
+    <form method="post" action="{{ url_for('mydin.pendencia_nova') }}" class="form-grade">
+      <label>Tipo
+        <select name="tipo">
+          <option value="reembolso">reembolso</option>
+          <option value="mensalidade">mensalidade</option>
+          <option value="parcela_projeto">parcela de projeto</option>
+        </select>
+      </label>
+      <label>Contato
+        <select name="contato_id"><option value="">—</option>
+          {% for c in contatos %}<option value="{{ c.id }}">{{ c.nome }}</option>{% endfor %}
+        </select>
+      </label>
+      <label>Valor (R$) <input type="text" name="valor" required></label>
+      <label>Data esperada <input type="date" name="data_esperada"></label>
+      <label>Obs <input type="text" name="obs"></label>
+      <button type="submit">Criar</button>
+    </form>
+  </details>
+  {% if pendencias %}
+  <table class="lista">
+    <tr><th>Tipo</th><th>Quem</th><th>Projeto</th><th class="num">Valor</th><th>Esperado</th><th></th></tr>
+    {% for p in pendencias %}
+    <tr>
+      <td>{{ p.tipo.replace('_', ' ') }}</td>
+      <td>{{ p.contato_nome or '—' }}</td>
+      <td class="mini">{{ p.projeto_titulo or '' }} {{ p.obs or '' }}</td>
+      <td class="num">{{ p.valor_esperado_cent|moeda }}</td>
+      <td>{{ p.data_esperada|data_br }}</td>
+      <td>
+        <form method="post" action="{{ url_for('mydin.pendencia_status', pid=p.id) }}" class="inline">
+          <button type="submit" name="status" value="paga" class="mini-btn">recebida</button>
+          <button type="submit" name="status" value="cancelada" class="mini-btn">cancelar</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}<p class="mini">Nenhuma pendência aberta.</p>{% endif %}
+</section>
+
+<section class="painel">
+  <h2>Compras compartilhadas — reembolsos</h2>
+  <p class="nota">Compras que você adiantou para o grupo (regra I). A saída cheia é despesa marcada
+  como compartilhada; os reembolsos entram como REEMB (não são receita).</p>
+  {% if reembolsos %}
+  <table class="lista">
+    <tr><th>Data</th><th>Compra</th><th class="num">Valor</th><th class="num">Reembolsado</th><th class="num">Custo real</th></tr>
+    {% for r in reembolsos %}
+    <tr>
+      <td>{{ r.data|data_br }}</td>
+      <td class="mini"><a href="{{ url_for('mydin.transacao_edit', tid=r.id) }}">{{ (r.descricao or '')[:60] }}</a></td>
+      <td class="num">{{ r.valor_cent|moeda }}</td>
+      <td class="num pos">{{ r.recebido|moeda }}</td>
+      <td class="num">{{ (r.valor_cent + r.recebido)|moeda }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}<p class="mini">Nenhuma compra compartilhada marcada.</p>{% endif %}
+</section>
+{% endblock %}

@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block titulo %}Contatos{% endblock %}
+{% block conteudo %}
+<h1>Contatos</h1>
+<p class="nota">Identidade = nome + CPF mascarado (impressão digital estável entre bancos).
+O <strong>cadastro do contato é a fonte da verdade</strong> da classificação.</p>
+
+<form method="get" class="filtros painel">
+  <input type="search" name="q" placeholder="buscar nome ou CPF" value="{{ q }}">
+  <button type="submit">Buscar</button>
+</form>
+
+<details class="painel">
+  <summary>+ Novo contato manual</summary>
+  <form method="post" action="{{ url_for('mydin.contato_novo') }}" class="form-grade">
+    <label>Nome <input type="text" name="nome" required></label>
+    <label>CPF mascarado <input type="text" name="cpf_mascarado" placeholder="•••.085.407-••"></label>
+    <label>Tipo
+      <select name="tipo">
+        {% for t in ['aluno','cliente_musica','fixo','amigo_multi','familia','interno','desconhecido'] %}
+        <option value="{{ t }}">{{ t }}</option>{% endfor %}
+      </select>
+    </label>
+    <button type="submit">Criar</button>
+  </form>
+</details>
+
+<table class="lista">
+  <tr><th>Nome</th><th>CPF</th><th>Tipo</th><th>Paga por</th><th class="num">Lançamentos</th></tr>
+  {% for c in contatos %}
+  <tr>
+    <td><a href="{{ url_for('mydin.contato_edit', cid=c.id) }}">{{ c.nome }}</a>
+        {% if c.sempre_revisar %}<span class="tag">sempre revisar</span>{% endif %}</td>
+    <td class="mini">{{ c.cpf_mascarado or '—' }}</td>
+    <td>{{ c.tipo }}</td>
+    <td>{{ c.aluno_nome or '—' }}</td>
+    <td class="num">{{ c.n_tx }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% endblock %}

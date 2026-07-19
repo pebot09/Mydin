@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block titulo %}Painel{% endblock %}
+{% block conteudo %}
+<div class="cab">
+  <h1>Painel</h1>
+  <form method="get" class="inline">
+    <select name="mes" onchange="this.form.submit()">
+      {% for m in meses|reverse %}<option value="{{ m }}" {% if m==mes %}selected{% endif %}>{{ m|mes_br }}</option>{% endfor %}
+      {% if mes not in meses %}<option value="{{ mes }}" selected>{{ mes|mes_br }}</option>{% endif %}
+    </select>
+  </form>
+</div>
+
+<section class="cards">
+  <div class="card destaque">
+    <div class="rotulo">Patrimônio (conta + poupança) — o termômetro real</div>
+    <div class="valorzao">{{ patrimonio|moeda }}</div>
+    <div class="sub {{ 'pos' if variacao >= 0 else 'neg' }}">
+      {{ '+' if variacao >= 0 }}{{ variacao|moeda }} em {{ mes|mes_br }}
+    </div>
+    <div class="mini">Conta: {{ saldo_conta|moeda }} · Poupança/invest.: {{ saldo_poupanca|moeda }}</div>
+  </div>
+  <div class="card">
+    <div class="rotulo">Receita de {{ mes|mes_br }}</div>
+    <div class="valorzao">{{ (receita_ens + receita_mus)|moeda }}</div>
+    <div class="mini">Ensino: {{ receita_ens|moeda }} ({{ pagantes }} pagante{{ 's' if pagantes != 1 }}) · Música: {{ receita_mus|moeda }}</div>
+  </div>
+  <div class="card">
+    <div class="rotulo">Gastos de {{ mes|mes_br }}</div>
+    <div class="valorzao">{{ (fixo + variavel)|moeda }}</div>
+    <div class="mini">Fixo: {{ fixo|moeda }} · Variável: {{ variavel|moeda }}</div>
+    <div class="mini">Piso de custo fixo ≈ <strong>{{ piso_fixo|moeda }}/mês</strong></div>
+  </div>
+</section>
+
+<p class="nota">Categorias servem para <em>entender</em> o fluxo; a saúde financeira é medida pelo patrimônio.</p>
+
+<div class="colunas">
+  <section class="painel">
+    <h2>Alertas</h2>
+    {% if n_revisao %}
+      <p><a href="{{ url_for('mydin.revisao') }}">⚠ {{ n_revisao }} lançamento(s) aguardando revisão</a></p>
+    {% endif %}
+    {% if nao_pagaram %}
+      <p>Alunos que ainda não pagaram em {{ mes|mes_br }}:</p>
+      <ul>
+        {% for a in nao_pagaram %}<li>{{ a.nome }} <span class="mini">({{ a.turma|turma }})</span></li>{% endfor %}
+      </ul>
+    {% elif not n_revisao %}
+      <p class="mini">Tudo em dia ✓</p>
+    {% endif %}
+  </section>
+
+  <section class="painel">
+    <h2>Gastos por categoria — {{ mes|mes_br }}</h2>
+    {% if gastos %}
+    <table>
+      {% for cat, v in gastos|dictsort(by='value')|reverse %}
+      <tr><td>{{ cat }}</td><td class="num">{{ v|moeda }}</td></tr>
+      {% endfor %}
+    </table>
+    {% else %}<p class="mini">Sem gastos registrados no mês.</p>{% endif %}
+  </section>
+
+  <section class="painel">
+    <h2>Compromissos futuros (parcelas do cartão)</h2>
+    {% if futuros %}
+    <table>
+      <tr><th>Fatura</th><th class="num">Comprometido</th><th class="num">Parcelas</th></tr>
+      {% for f in futuros %}
+      <tr><td>{{ f.mes|mes_br }}</td><td class="num">{{ f.s|moeda }}</td><td class="num">{{ f.n }}</td></tr>
+      {% endfor %}
+    </table>
+    {% else %}<p class="mini">Nenhuma parcela futura lançada.</p>{% endif %}
+  </section>
+</div>
+{% endblock %}

@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block titulo %}{{ 'Editar transação' if tx else 'Lançamento manual' }}{% endblock %}
+{% block conteudo %}
+<h1>{{ 'Transação' if tx else 'Lançamento manual' }}</h1>
+
+{% if tx %}
+<div class="painel">
+  <p><strong>{{ tx.data|data_br }}</strong> · <span class="{{ 'pos' if tx.valor_cent > 0 else 'neg' }}">{{ tx.valor_cent|moeda }}</span>
+     · {{ tx.conta }} · {{ tx.origem }}</p>
+  <p class="mini">{{ tx.descricao }}</p>
+  {% if tx.especial == 'pagamento_fatura' %}
+    <p class="tag">Ponta do pagamento de fatura — ignorada nos relatórios para evitar contagem dupla.</p>
+  {% endif %}
+</div>
+
+{% if pago_estudio is not none %}
+<div class="painel alerta">
+  <p><strong>Aluguel do estúdio abaixo de {{ (pago_estudio - tx.valor_cent)|moeda }}?</strong>
+  Você pagou {{ (-tx.valor_cent)|moeda }}. A diferença de <strong>{{ pago_estudio|moeda }}</strong> foi trocada por trabalho seu.</p>
+  <form method="post" action="{{ url_for('mydin.abatimento', tid=tx.id) }}">
+    <button type="submit">Registrar abatimento (EST +{{ pago_estudio|moeda }} / SUB +{{ pago_estudio|moeda }})</button>
+  </form>
+</div>
+{% endif %}
+
+{% if tx.categoria_id == 'INT' %}
+<p class="nota">Transferência interna. Se na verdade foi um <em>gasto</em> pago direto da carteira digital,
+troque a categoria abaixo para a despesa correta — a poupança se ajusta sozinha.</p>
+{% endif %}
+{% endif %}
+
+<form method="post" class="painel form-grade">
+  {% if not tx %}
+  <label>Data <input type="date" name="data" value="{{ '' }}"></label>
+  <label>Tipo
+    <select name="tipo"><option value="saida">Saída</option><option value="entrada">Entrada</option></select>
+  </label>
+  <label>Valor (R$) <input type="text" name="valor" placeholder="0,00" required></label>
+  <label>Descrição <input type="text" name="descricao"></label>
+  {% endif %}
+
+  <label>Categoria
+    <select name="categoria_id">
+      <option value="">— sem categoria —</option>
+      {% for c in cats %}
+      <option value="{{ c.id }}" {% if tx and tx.categoria_id == c.id %}selected{% endif %}>{{ c.id }} · {{ c.nome }} ({{ c.grupo }})</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label>Contato
+    <select name="contato_id">
+      <option value="">—</option>
+      {% for c in contatos %}<option value="{{ c.id }}" {% if tx and tx.contato_id == c.id %}selected{% endif %}>{{ c.nome }}</option>{% endfor %}
+    </select>
+  </label>
+  <label>Projeto (música)
+    <select name="projeto_id">
+      <option value="">—</option>
+      {% for p in projetos %}<option value="{{ p.id }}" {% if tx and tx.projeto_id == p.id %}selected{% endif %}>{{ p.titulo }}</option>{% endfor %}
+    </select>
+  </label>
+  {% if tx %}
+  <label class="linha"><input type="checkbox" name="compartilhada" {% if tx.compartilhada %}checked{% endif %}>
+    Compra compartilhada (adiantei para o grupo — reembolsos entram como REEMB)</label>
+  <label class="linha"><input type="checkbox" name="meia" {% if tx.meia %}checked{% endif %}>
+    Mensalidade meia (férias) — conta metade da cota</label>
+  {% if tx.valor_cent > 0 %}
+  <label>Vincular como reembolso da compra (id)
+    <input type="text" name="compra_pai_id" value="{{ tx.compra_pai_id or '' }}" placeholder="cole o id da compra compartilhada">
+  </label>
+  {% endif %}
+  {% endif %}
+  <button type="submit">Salvar{{ ' (confirma a classificação)' if tx }}</button>
+</form>
+
+{% if tx and tx.compartilhada %}
+<section class="painel">
+  <h2>Reembolsos vinculados</h2>
+  <p class="mini">id desta compra: <code>{{ tx.id }}</code> — cole no campo "compra" das entradas REEMB.</p>
+  {% if reembolsos %}
+  <table>
+    <tr><th>Data</th><th>De</th><th class="num">Valor</th></tr>
+    {% for r in reembolsos %}
+    <tr><td>{{ r.data|data_br }}</td><td>{{ r.contato_nome or '—' }}</td><td class="num">{{ r.valor_cent|moeda }}</td></tr>
+    {% endfor %}
+  </table>
+  {% set recebido = reembolsos|sum(attribute='valor_cent') %}
+  <p><strong>Custo real meu: {{ (tx.valor_cent + recebido)|moeda }}</strong>
+     <span class="mini">(compra {{ tx.valor_cent|moeda }} + reembolsos {{ recebido|moeda }})</span></p>
+  {% else %}<p class="mini">Nenhum reembolso vinculado ainda.</p>{% endif %}
+</section>
+{% endif %}
+{% endblock %}

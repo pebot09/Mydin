@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block titulo %}Ensino{% endblock %}
+{% block conteudo %}
+<div class="cab">
+  <h1>Ensino de cerâmica</h1>
+  <form method="get" class="inline">
+    <select name="mes" onchange="this.form.submit()">
+      {% for m in meses|reverse %}<option value="{{ m }}" {% if m == mes %}selected{% endif %}>{{ m|mes_br }}</option>{% endfor %}
+      {% if mes not in meses %}<option value="{{ mes }}" selected>{{ mes|mes_br }}</option>{% endif %}
+    </select>
+  </form>
+</div>
+
+<section class="cards">
+  <div class="card destaque">
+    <div class="rotulo">% do potencial atingido — {{ p.mes|mes_br }}</div>
+    <div class="valorzao">{{ '%.0f'|format(p.pct_potencial) }}%</div>
+    <div class="barra"><div class="preenchido" style="width: {{ [p.pct_potencial, 100]|min }}%"></div></div>
+    <div class="mini">{{ p.receita_cent|moeda }} de {{ p.potencial_cent|moeda }} possíveis</div>
+  </div>
+  <div class="card">
+    <div class="rotulo">Pagantes no mês</div>
+    <div class="valorzao">{{ p.pagantes }} / {{ p.capacidade }}</div>
+    <div class="mini">Receita = pagantes × cota (não depende do valor pago — repasse é do ateliê)</div>
+  </div>
+</section>
+
+{% if p.ens_sem_aluno %}
+<div class="flash erro">⚠ {{ p.ens_sem_aluno }} pagamento(s) ENS de contato sem aluno vinculado — não contam como pagante.
+  Vincule o pagador ao aluno na tela de contatos.</div>
+{% endif %}
+
+<div class="colunas">
+  <section class="painel">
+    <h2>Vagas por turma</h2>
+    <table>
+      <tr><th>Turma</th><th class="num">Ativos</th><th class="num">Vagas ociosas</th></tr>
+      {% for t in p.turmas %}
+      <tr><td>{{ t.turma|turma }}</td><td class="num">{{ t.ativos }}</td>
+          <td class="num {{ 'neg' if t.vagas else 'pos' }}">{{ t.vagas }}</td></tr>
+      {% endfor %}
+    </table>
+  </section>
+
+  <section class="painel">
+    <h2>Ainda não pagaram em {{ p.mes|mes_br }}</h2>
+    {% if p.nao_pagaram %}
+    <ul>{% for a in p.nao_pagaram %}<li>{{ a.nome }} <span class="mini">({{ a.turma|turma }})</span></li>{% endfor %}</ul>
+    {% else %}<p class="mini">Todos os ativos pagaram ✓</p>{% endif %}
+  </section>
+</div>
+
+<section class="painel">
+  <h2>Alunos</h2>
+  <details>
+    <summary>+ Novo aluno</summary>
+    <form method="post" action="{{ url_for('mydin.aluno_novo') }}" class="form-grade">
+      <label>Nome <input type="text" name="nome" required></label>
+      <label>Turma
+        <select name="turma">{% for t in turmas %}<option value="{{ t }}">{{ t|turma }}</option>{% endfor %}</select>
+      </label>
+      <label>Cota (R$) <input type="text" name="valor_cota" placeholder="232,50"></label>
+      <button type="submit">Cadastrar</button>
+    </form>
+  </details>
+  <table class="lista">
+    <tr><th>Nome</th><th>Turma</th><th>Pagadores</th><th class="num">Cota</th><th>Ativo</th><th></th></tr>
+    {% for a in alunos %}
+    <tr class="{{ 'apagada' if not a.ativo }}">
+      <form method="post" action="{{ url_for('mydin.aluno_edit', aid=a.id) }}">
+      <td><input type="text" name="nome" value="{{ a.nome }}"></td>
+      <td><select name="turma">{% for t in turmas %}<option value="{{ t }}" {% if a.turma == t %}selected{% endif %}>{{ t|turma }}</option>{% endfor %}</select></td>
+      <td class="mini">{{ a.pagadores or '— vincular na tela de contatos —' }}</td>
+      <td class="num"><input type="text" name="valor_cota" value="{{ '%.2f'|format(a.valor_cota_cent / 100)|replace('.', ',') }}" size="7"></td>
+      <td><input type="checkbox" name="ativo" {% if a.ativo %}checked{% endif %}></td>
+      <td><button type="submit" class="mini-btn">salvar</button></td>
+      </form>
+    </tr>
+    {% endfor %}
+  </table>
+</section>
+{% endblock %}

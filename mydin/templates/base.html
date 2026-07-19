@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block titulo %}Mydin{% endblock %} · Mydin</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<header class="topo">
+  <a class="logo" href="{{ url_for('mydin.dashboard') }}">Mydin</a>
+  <nav>
+    <a href="{{ url_for('mydin.dashboard') }}">Painel</a>
+    <a href="{{ url_for('mydin.ensino') }}">Ensino</a>
+    <a href="{{ url_for('mydin.projetos') }}">Projetos</a>
+    <a href="{{ url_for('mydin.pendencias') }}">A receber</a>
+    <a href="{{ url_for('mydin.revisao') }}">Revisão{% if nav_revisao %} <span class="badge">{{ nav_revisao }}</span>{% endif %}</a>
+    <a href="{{ url_for('mydin.transacoes') }}">Transações</a>
+    <a href="{{ url_for('mydin.contatos') }}">Contatos</a>
+    <a href="{{ url_for('mydin.estatisticas') }}">Estatísticas</a>
+    <a href="{{ url_for('mydin.importar') }}">Importar</a>
+    <a href="{{ url_for('mydin.backup') }}">Backup</a>
+    <a href="{{ url_for('mydin.config') }}">⚙</a>
+  </nav>
+</header>
+<main>
+  {% with msgs = get_flashed_messages(with_categories=true) %}
+    {% for cat, msg in msgs %}<div class="flash {{ cat }}">{{ msg }}</div>{% endfor %}
+  {% endwith %}
+  {% block conteudo %}{% endblock %}
+</main>
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block titulo %}Configurações{% endblock %}
+{% block conteudo %}
+<h1>Configurações</h1>
+
+<form method="post" class="painel form-grade">
+  <label>Seu nome completo (como aparece no banco — detecta transferências próprias → INT)
+    <input type="text" name="nome_titular" value="{{ v.get('nome_titular','') }}"></label>
+  <label>Cota por aluno (R$)
+    <input type="text" name="valor_cota_cent" value="{{ '%.2f'|format(v.get('valor_cota_cent','23250')|int / 100)|replace('.', ',') }}"></label>
+  <label>Capacidade por turma
+    <input type="number" name="capacidade_turma" value="{{ v.get('capacidade_turma','7') }}" min="1" max="12"></label>
+  <label>Aluguel do estúdio (R$)
+    <input type="text" name="aluguel_estudio_cent" value="{{ '%.2f'|format(v.get('aluguel_estudio_cent','150000')|int / 100)|replace('.', ',') }}"></label>
+  <label>Piso de custo fixo (R$)
+    <input type="text" name="piso_fixo_cent" value="{{ '%.2f'|format(v.get('piso_fixo_cent','430000')|int / 100)|replace('.', ',') }}"></label>
+  <label>Saldo inicial da conta (R$ — anterior à primeira transação importada)
+    <input type="text" name="saldo_inicial_conta_cent" value="{{ '%.2f'|format(v.get('saldo_inicial_conta_cent','0')|int / 100)|replace('.', ',') }}"></label>
+  <label>Saldo inicial da poupança/investimentos (R$)
+    <input type="text" name="saldo_inicial_poupanca_cent" value="{{ '%.2f'|format(v.get('saldo_inicial_poupanca_cent','0')|int / 100)|replace('.', ',') }}"></label>
+  <button type="submit">Salvar</button>
+</form>
+
+<section class="painel">
+  <h2>Vendedores de medicina conhecidos</h2>
+  <p class="nota">Lista editável — pagamento a quem está aqui vira MED automático; fora da lista vai para revisão.
+  Adicione/remova na página do contato.</p>
+  {% if vendedores %}
+  <ul>{% for vd in vendedores %}<li><a href="{{ url_for('mydin.contato_edit', cid=vd.id) }}">{{ vd.nome }}</a></li>{% endfor %}</ul>
+  {% else %}<p class="mini">Nenhum cadastrado.</p>{% endif %}
+</section>
+
+<section class="painel">
+  <h2>Regras aprendidas</h2>
+  {% if regras %}
+  <table class="lista">
+    <tr><th>Tipo</th><th>Alvo</th><th>→ Categoria</th><th></th></tr>
+    {% for r in regras %}
+    <tr>
+      <td>{{ r.tipo }}</td>
+      <td>{{ r.contato_nome or r.padrao }}</td>
+      <td>{{ r.categoria_id }}</td>
+      <td><form method="post" action="{{ url_for('mydin.regra_excluir', rid=r.id) }}" class="inline">
+        <button type="submit" class="mini-btn">remover</button></form></td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}<p class="mini">Nenhuma regra criada ainda — o app aprende quando você classifica na fila de revisão.</p>{% endif %}
+</section>
+{% endblock %}

@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block titulo %}Transações{% endblock %}
+{% block conteudo %}
+<div class="cab">
+  <h1>Transações</h1>
+  <a class="botao" href="{{ url_for('mydin.transacao_nova') }}">+ Lançamento manual</a>
+</div>
+
+<form method="get" class="filtros painel">
+  <select name="mes"><option value="">todos os meses</option>
+    {% for m in meses|reverse %}<option value="{{ m }}" {% if request.args.get('mes')==m %}selected{% endif %}>{{ m|mes_br }}</option>{% endfor %}
+  </select>
+  <select name="categoria"><option value="">todas as categorias</option>
+    <option value="(sem)" {% if request.args.get('categoria')=='(sem)' %}selected{% endif %}>— sem categoria —</option>
+    {% for c in cats %}<option value="{{ c.id }}" {% if request.args.get('categoria')==c.id %}selected{% endif %}>{{ c.id }} · {{ c.nome }}</option>{% endfor %}
+  </select>
+  <select name="conta"><option value="">conta e cartão</option>
+    <option value="nuconta" {% if request.args.get('conta')=='nuconta' %}selected{% endif %}>conta</option>
+    <option value="nucartao" {% if request.args.get('conta')=='nucartao' %}selected{% endif %}>cartão</option>
+    <option value="ajuste" {% if request.args.get('conta')=='ajuste' %}selected{% endif %}>ajustes</option>
+    <option value="manual" {% if request.args.get('conta')=='manual' %}selected{% endif %}>manuais</option>
+  </select>
+  <input type="search" name="q" placeholder="buscar descrição/contato" value="{{ request.args.get('q','') }}">
+  <button type="submit">Filtrar</button>
+</form>
+
+<p class="mini">{{ txs|length }} lançamento(s) · soma {{ total|moeda }}{% if txs|length == 500 %} (limitado a 500 — refine o filtro){% endif %}</p>
+
+<table class="lista">
+  <tr><th>Data</th><th>Descrição</th><th>Cat.</th><th class="num">Valor</th><th></th></tr>
+  {% for t in txs %}
+  <tr class="{{ 'apagada' if t.especial == 'pagamento_fatura' }}">
+    <td class="nowrap">{{ t.data|data_br }}</td>
+    <td>
+      {% if t.contato_nome %}<strong>{{ t.contato_nome }}</strong> · {% endif %}
+      <span class="mini">{{ (t.descricao or '')[:90] }}</span>
+      {% if t.especial == 'pagamento_fatura' %}<span class="tag">fatura — ignorada</span>{% endif %}
+      {% if t.especial == 'abatimento' %}<span class="tag">abatimento</span>{% endif %}
+      {% if t.compartilhada %}<span class="tag">compartilhada</span>{% endif %}
+      {% if t.meia %}<span class="tag">meia</span>{% endif %}
+    </td>
+    <td>{{ t.categoria_id or '—' }}</td>
+    <td class="num {{ 'pos' if t.valor_cent > 0 else 'neg' }}">{{ t.valor_cent|moeda }}</td>
+    <td><a href="{{ url_for('mydin.transacao_edit', tid=t.id) }}">editar</a></td>
+  </tr>
+  {% endfor %}
+</table>
+{% endblock %}

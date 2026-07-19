@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block titulo %}Importar{% endblock %}
+{% block conteudo %}
+<h1>Importar OFX</h1>
+<p class="nota">Aceita extrato da <strong>conta</strong> e <strong>faturas de cartão</strong> do Nubank — o tipo é detectado
+automaticamente. Selecione vários arquivos de uma vez para carga histórica. Reimportar período
+sobreposto nunca duplica (deduplicação por FITID).</p>
+
+<form method="post" enctype="multipart/form-data" class="painel">
+  <input type="file" name="arquivos" accept=".ofx,.OFX" multiple required>
+  <button type="submit">Importar</button>
+</form>
+
+{% if resultados %}
+<section class="painel">
+  <h2>Resultado</h2>
+  <table>
+    <tr><th>Arquivo</th><th>Tipo</th><th class="num">Novas</th><th class="num">Duplicadas (ignoradas)</th></tr>
+    {% for r in resultados %}
+    <tr>
+      <td>{{ r.arquivo }}</td>
+      {% if r.erro %}
+        <td colspan="3" class="neg">{{ r.erro }}</td>
+      {% else %}
+        <td>{{ 'Fatura de cartão' if r.tipo == 'cartao' else 'Conta' }}</td>
+        <td class="num">{{ r.novas }}</td>
+        <td class="num">{{ r.duplicadas }}</td>
+      {% endif %}
+    </tr>
+    {% endfor %}
+  </table>
+  <p>{{ n_auto }} classificadas automaticamente · <a href="{{ url_for('mydin.revisao') }}">{{ n_rev }} para revisão manual →</a></p>
+</section>
+{% endif %}
+{% endblock %}
