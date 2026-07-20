@@ -11,11 +11,24 @@ cartão), classifica pelas regras do negócio e mede a saúde financeira pelo
 
 ## Rodando
 
+**Mac (jeito fácil):** dê duplo clique em **`Abrir Mydin.command`**. Na primeira vez
+ele prepara tudo sozinho (cria um ambiente Python isolado e instala as
+dependências); depois só sobe o servidor, abre o navegador e mostra o endereço
+para acessar do celular no mesmo Wi-Fi. Se o macOS bloquear o atalho na primeira
+vez, clique com o botão direito → Abrir → Abrir (ou rode `chmod +x "Abrir
+Mydin.command"` no terminal dentro da pasta).
+
+**Qualquer sistema (terminal):**
+
 ```bash
 pip install -r requirements.txt
 python run.py            # abre em http://127.0.0.1:5000
 python run.py --host 0.0.0.0 --port 8080   # para acessar do celular na rede local
 ```
+
+**No celular:** com o servidor rodando, abra o endereço indicado no navegador do
+celular e use "Adicionar à Tela de Início" (Safari) / "Adicionar à tela inicial"
+(Chrome) — o Mydin instala como app, com ícone e tela cheia.
 
 O banco SQLite fica em `data/mydin.db` (fora do git — o `.gitignore` cobre
 `*.db`, `*.ofx`, `*.xlsx` e a pasta `data/`). Nada vai para a nuvem.
