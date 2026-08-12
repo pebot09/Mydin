@@ -53,11 +53,14 @@ def dashboard():
     fixo, variavel, gastos = sv.custo_fixo_variavel_mes(db, mes)
     n_revisao = db.execute(
         "SELECT COUNT(*) n FROM transacoes WHERE status_revisao='revisar'").fetchone()["n"]
+    banco_cent, banco_data = sv.saldo_banco_info(db)
     return render_template(
         "dashboard.html", mes=mes,
         patrimonio=sv.patrimonio(db),
         saldo_conta=sv.saldo_conta(db),
         saldo_poupanca=sv.saldo_poupanca(db),
+        banco_data=banco_data,
+        saldos_ok=(banco_cent is not None) or (sv.cfg_int(db, "saldo_poupanca_atual_cent") > 0),
         variacao=sv.variacao_patrimonio_mes(db, mes),
         receita_ens=rec_ens, pagantes=pagantes,
         receita_mus=sv.receita_musica_mes(db, mes),
@@ -186,6 +189,53 @@ def transacoes():
     total = sum(t["valor_cent"] for t in txs)
     return render_template("transacoes.html", txs=txs, cats=categorias(db),
                            total=total, meses=sv.meses_com_dados(db))
+
+
+def _periodo_args():
+    """Lê mes/de/ate da query. Default: mês atual."""
+    mes = request.args.get("mes")
+    de = request.args.get("de")
+    ate = request.args.get("ate")
+    if not mes and not de and not ate:
+        mes = sv.mes_atual()
+    return mes or None, de or None, ate or None
+
+
+@bp.route("/despesas")
+def despesas():
+    db = get_db()
+    mes, de, ate = _periodo_args()
+    cats_desp = categorias(db, ["despesa"])
+    breakdown, total = sv.despesas_por_categoria(db, mes, de, ate)
+    detalhe = {r["cat"]: sv.transacoes_despesa(db, r["cat"], mes, de, ate) for r in breakdown}
+    return render_template("despesas.html", mes=mes, de=de, ate=ate,
+                           breakdown=breakdown, total=total, detalhe=detalhe,
+                           a_categorizar=sv.saidas_a_categorizar(db, mes, de, ate),
+                           cats=cats_desp, todas_cats=categorias(db),
+                           meses=sv.meses_com_dados(db))
+
+
+@bp.route("/receitas")
+def receitas():
+    db = get_db()
+    mes, de, ate = _periodo_args()
+    r = sv.receitas_periodo(db, mes, de, ate)
+    pagantes = []
+    for m in sv.meses_no_periodo(db, mes, de, ate):
+        pagantes = sv.alunos_pagantes_mes(db, m)  # do último mês do período, p/ referência
+    return render_template("receitas.html", mes=mes, de=de, ate=ate, r=r,
+                           pagantes=pagantes, meses=sv.meses_com_dados(db))
+
+
+@bp.route("/transacoes/<tid>/categoria", methods=["POST"])
+def transacao_categoria(tid):
+    """Recategorização rápida de uma linha (usada nas telas de Despesas/Receitas)."""
+    db = get_db()
+    cat = request.form.get("categoria_id") or None
+    db.execute("UPDATE transacoes SET categoria_id=?, status_revisao='confirmado' WHERE id=?",
+               (cat, tid))
+    db.commit()
+    return redirect(request.form.get("voltar") or url_for("mydin.despesas"))
 
 
 @bp.route("/transacoes/nova", methods=["GET", "POST"])
@@ -689,10 +739,15 @@ def config():
     if request.method == "POST":
         set_cfg(db, "nome_titular", (request.form.get("nome_titular") or "").strip())
         for chave in ("valor_cota_cent", "aluguel_estudio_cent", "piso_fixo_cent",
-                      "saldo_inicial_conta_cent", "saldo_inicial_poupanca_cent"):
+                      "saldo_poupanca_atual_cent"):
             v = parse_moeda(request.form.get(chave))
             if v is not None:
                 set_cfg(db, chave, v)
+        # saldo atual da conta: recalibra o inicial p/ a série bater
+        saldo_conta = parse_moeda(request.form.get("saldo_conta_banco_cent"))
+        if saldo_conta is not None:
+            from .importer import calibrar_saldo_banco
+            calibrar_saldo_banco(db, saldo_conta, sv.hoje())
         cap = request.form.get("capacidade_turma")
         if cap and cap.isdigit():
             set_cfg(db, "capacidade_turma", cap)

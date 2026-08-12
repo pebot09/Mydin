@@ -4,12 +4,14 @@
 <h1>Contas a receber</h1>
 
 <section class="painel">
-  <h2>Mensalidades pendentes (inferidas do padrão)</h2>
+  <h2>Mensalidades pendentes deste mês</h2>
+  <p class="nota">Só aparece quem <strong>costuma pagar</strong> (pagou em algum dos 3 meses anteriores)
+  e ainda não pagou este mês. Ex-alunos e quem parou não entram aqui.</p>
   {% if mensalidades %}
   <ul>{% for a in mensalidades %}
     <li>{{ a.nome }} <span class="mini">({{ a.turma|turma }})</span> — cota {{ a.valor_cota_cent|moeda }}</li>
   {% endfor %}</ul>
-  {% else %}<p class="mini">Todos os alunos ativos já pagaram este mês ✓</p>{% endif %}
+  {% else %}<p class="mini">Ninguém pendente pelo padrão dos últimos meses ✓</p>{% endif %}
 </section>
 
 <section class="painel">

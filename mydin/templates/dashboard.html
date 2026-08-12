@@ -18,7 +18,12 @@
     <div class="sub {{ 'pos' if variacao >= 0 else 'neg' }}">
       {{ '+' if variacao >= 0 }}{{ variacao|moeda }} em {{ mes|mes_br }}
     </div>
-    <div class="mini">Conta: {{ saldo_conta|moeda }} · Poupança/invest.: {{ saldo_poupanca|moeda }}</div>
+    <div class="mini">Conta: {{ saldo_conta|moeda }}{% if banco_data %} <span class="tag">banco {{ banco_data|data_br }}</span>{% endif %}
+      · Poupança/invest.: {{ saldo_poupanca|moeda }}</div>
+    {% if not saldos_ok %}
+    <div class="mini neg">⚠ Configure os saldos em <a href="{{ url_for('mydin.config') }}">⚙ Config</a> (ou importe um OFX)
+      para o patrimônio ficar correto.</div>
+    {% endif %}
   </div>
   <div class="card">
     <div class="rotulo">Receita de {{ mes|mes_br }}</div>

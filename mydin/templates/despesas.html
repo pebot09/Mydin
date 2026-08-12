@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% from "_periodo.html" import seletor %}
+{% block titulo %}Despesas{% endblock %}
+{% block conteudo %}
+{% set periodo_lbl = mes|mes_br if mes else ((de|data_br) ~ ' a ' ~ (ate|data_br) if (de or ate) else 'todo o período') %}
+<div class="cab"><h1>Despesas</h1></div>
+{{ seletor('mydin.despesas', mes, de, ate, meses) }}
+
+<section class="cards">
+  <div class="card destaque">
+    <div class="rotulo">Total de despesas — {{ periodo_lbl }}</div>
+    <div class="valorzao">{{ total|moeda }}</div>
+    <div class="mini">líquido (entradas na mesma categoria já abatidas)</div>
+  </div>
+</section>
+
+{% if a_categorizar %}
+<section class="painel alerta">
+  <h2>Faltam categorizar ({{ a_categorizar|length }})</h2>
+  <p class="mini">Saídas sem categoria no período. Classifique aqui mesmo:</p>
+  <table class="lista">
+    {% for t in a_categorizar %}
+    <tr>
+      <td class="nowrap">{{ t.data|data_br }}</td>
+      <td>{% if t.contato_nome %}<strong>{{ t.contato_nome }}</strong> · {% endif %}
+          <span class="mini">{{ (t.descricao or '')[:70] }}</span></td>
+      <td class="num neg">{{ t.valor_cent|moeda }}</td>
+      <td>
+        <form method="post" action="{{ url_for('mydin.transacao_categoria', tid=t.id) }}" class="inline">
+          <input type="hidden" name="voltar" value="{{ request.full_path }}">
+          <select name="categoria_id" onchange="this.form.submit()">
+            <option value="">→ categoria</option>
+            {% for k in cats %}<option value="{{ k.id }}">{{ k.id }} · {{ k.nome }}</option>{% endfor %}
+          </select>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+</section>
+{% endif %}
+
+{% if breakdown %}
+<div class="grafico" data-tipo="barras"
+     data-serie='[{% for r in breakdown %}{"m":"{{ r.cat }}","a":{{ r.s }}}{{ "," if not loop.last }}{% endfor %}]'></div>
+
+<section class="painel">
+  <h2>Por categoria</h2>
+  <table class="lista">
+    <tr><th>Categoria</th><th class="num">Total</th><th class="num">%</th><th class="num">Lançtos</th></tr>
+    {% for r in breakdown %}
+    <tr>
+      <td><a href="#cat-{{ r.cat }}">{{ r.cat }} · {{ r.nome }}</a></td>
+      <td class="num">{{ r.s|moeda }}</td>
+      <td class="num">{{ '%.0f'|format(r.s / total * 100 if total else 0) }}%</td>
+      <td class="num">{{ r.n }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</section>
+
+{% for r in breakdown %}
+<section class="painel" id="cat-{{ r.cat }}">
+  <h2>{{ r.cat }} · {{ r.nome }} <span class="mini">— {{ r.s|moeda }} em {{ r.n }} lançamento(s)</span></h2>
+  <details>
+    <summary>ver e recategorizar lançamentos</summary>
+    <table class="lista">
+      <tr><th>Data</th><th>Descrição</th><th class="num">Valor</th><th>Categoria</th></tr>
+      {% for t in detalhe[r.cat] %}
+      <tr>
+        <td class="nowrap">{{ t.data|data_br }}</td>
+        <td>{% if t.contato_nome %}<strong>{{ t.contato_nome }}</strong> · {% endif %}
+            <a class="mini" href="{{ url_for('mydin.transacao_edit', tid=t.id) }}">{{ (t.descricao or '')[:60] }}</a></td>
+        <td class="num {{ 'pos' if t.valor_cent > 0 else 'neg' }}">{{ t.valor_cent|moeda }}</td>
+        <td>
+          <form method="post" action="{{ url_for('mydin.transacao_categoria', tid=t.id) }}" class="inline">
+            <input type="hidden" name="voltar" value="{{ request.full_path }}">
+            <select name="categoria_id" onchange="this.form.submit()">
+              {% for k in todas_cats %}<option value="{{ k.id }}" {% if t.categoria_id == k.id %}selected{% endif %}>{{ k.id }}</option>{% endfor %}
+            </select>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </table>
+  </details>
+</section>
+{% endfor %}
+{% else %}
+<p class="painel">Sem despesas no período. <a href="{{ url_for('mydin.importar') }}">Importe seus OFX</a> para começar.</p>
+{% endif %}
+{% endblock %}

@@ -3,7 +3,7 @@
 Deduplicação por FITID (id_externo UNIQUE): reimportar período sobreposto nunca duplica.
 """
 from .classify import aplicar_classificacao
-from .db import novo_id
+from .db import cfg, novo_id, set_cfg
 from .ofx import parse_ofx
 
 
@@ -25,12 +25,16 @@ def importar_ofx(db, arquivos):
     """arquivos: lista de (nome, bytes). Retorna lista de resultados por arquivo."""
     resultados = []
     novos_ids = []
+    melhor_saldo = None  # saldo do banco mais recente entre os arquivos de conta
     for nome, dados in arquivos:
         try:
-            tipo, txs = parse_ofx(dados)
+            tipo, txs, saldo = parse_ofx(dados)
         except ValueError as e:
             resultados.append({"arquivo": nome, "erro": str(e)})
             continue
+        if tipo == "conta" and saldo and saldo["dtasof"]:
+            if melhor_saldo is None or saldo["dtasof"] >= melhor_saldo["dtasof"]:
+                melhor_saldo = saldo
         conta = "nucartao" if tipo == "cartao" else "nuconta"
         origem = "import_cartao" if tipo == "cartao" else "import_conta"
         n_novas = n_dup = 0
@@ -54,5 +58,25 @@ def importar_ofx(db, arquivos):
                 n_dup += 1
         resultados.append({"arquivo": nome, "tipo": tipo, "novas": n_novas, "duplicadas": n_dup})
     n_auto, n_rev = aplicar_classificacao(db, novos_ids)
+    if melhor_saldo:
+        calibrar_saldo_banco(db, melhor_saldo["balamt_cent"], melhor_saldo["dtasof"])
     db.commit()
     return resultados, n_auto, n_rev
+
+
+def calibrar_saldo_banco(db, balamt_cent, data_iso):
+    """Ancora o saldo da conta no valor que o banco informou naquela data.
+    Ajusta o 'saldo inicial' para que toda a série calculada bata com a realidade —
+    tornando o patrimônio imune a erro de classificação."""
+    if not data_iso or db is None:
+        return
+    prev = cfg(db, "saldo_conta_banco_data")
+    if prev and data_iso < prev:
+        return  # já temos um saldo mais recente
+    soma = db.execute(
+        "SELECT COALESCE(SUM(valor_cent),0) s FROM transacoes WHERE conta='nuconta' AND data<=?",
+        (data_iso,),
+    ).fetchone()["s"]
+    set_cfg(db, "saldo_conta_banco_cent", balamt_cent)
+    set_cfg(db, "saldo_conta_banco_data", data_iso)
+    set_cfg(db, "saldo_inicial_conta_cent", balamt_cent - soma)

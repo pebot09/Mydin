@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% from "_periodo.html" import seletor %}
+{% block titulo %}Receitas{% endblock %}
+{% block conteudo %}
+{% set periodo_lbl = mes|mes_br if mes else ((de|data_br) ~ ' a ' ~ (ate|data_br) if (de or ate) else 'todo o período') %}
+<div class="cab"><h1>Receitas</h1></div>
+{{ seletor('mydin.receitas', mes, de, ate, meses) }}
+
+<section class="cards">
+  <div class="card destaque">
+    <div class="rotulo">Receita total — {{ periodo_lbl }}</div>
+    <div class="valorzao">{{ r.total|moeda }}</div>
+    <div class="mini">Ensino {{ '%.0f'|format(r.ensino / r.total * 100 if r.total else 0) }}% ·
+      Música {{ '%.0f'|format(r.musica / r.total * 100 if r.total else 0) }}%</div>
+  </div>
+  <div class="card">
+    <div class="rotulo">Ensino (cerâmica)</div>
+    <div class="valorzao">{{ r.ensino|moeda }}</div>
+    <div class="mini">{{ r.pagantes }} pagamento(s) × cota</div>
+  </div>
+  <div class="card">
+    <div class="rotulo">Música</div>
+    <div class="valorzao">{{ r.musica|moeda }}</div>
+    <div class="mini">inclui {{ r.sub|moeda }} de abatimento do estúdio (trabalho trocado)</div>
+  </div>
+</section>
+
+{% if r.total %}
+<div class="grafico" data-tipo="barras"
+     data-serie='[{"m":"Ensino","a":{{ r.ensino }}},{"m":"Música","a":{{ r.musica }}}]'></div>
+{% endif %}
+
+<section class="painel">
+  <h2>Música por cliente</h2>
+  {% if r.por_cliente %}
+  <table class="lista">
+    <tr><th>Cliente</th><th class="num">Total</th><th class="num">Pagamentos</th></tr>
+    {% for c in r.por_cliente %}
+    <tr><td>{{ c.nome }}</td><td class="num">{{ c.s|moeda }}</td><td class="num">{{ c.n }}</td></tr>
+    {% endfor %}
+  </table>
+  {% else %}<p class="mini">Nenhuma receita de música no período.</p>{% endif %}
+</section>
+
+<section class="painel">
+  <h2>Ensino — quem pagou {% if mes %}em {{ mes|mes_br }}{% else %}(último mês do período){% endif %}</h2>
+  {% if pagantes %}
+  <table class="lista">
+    <tr><th>Aluno</th><th>Turma</th><th class="num">Cota</th></tr>
+    {% for a in pagantes %}
+    <tr><td>{{ a.nome }}</td><td>{{ a.turma|turma }}</td>
+        <td class="num">{{ (a.valor_cota_cent // 2 if a.meia else a.valor_cota_cent)|moeda }}{% if a.meia %} <span class="tag">meia</span>{% endif %}</td></tr>
+    {% endfor %}
+  </table>
+  <p class="mini">Receita de ensino = nº de pagantes × cota — não depende do valor bruto que cada um pagou
+    (a diferença + barro é do ateliê).</p>
+  {% else %}<p class="mini">Nenhum pagamento de aluno identificado no período.</p>{% endif %}
+</section>
+{% endblock %}

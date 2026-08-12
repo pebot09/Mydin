@@ -146,8 +146,10 @@ CONFIG_SEED = {
     "capacidade_turma": "7",            # 7 alunos por turma (8 é exceção)
     "aluguel_estudio_cent": "150000",   # R$ 1.500 — Carlos Trilha
     "piso_fixo_cent": "430000",         # piso de custo fixo ≈ R$ 4.300/mês
-    "saldo_inicial_conta_cent": "0",
-    "saldo_inicial_poupanca_cent": "0",
+    "saldo_inicial_conta_cent": "0",       # calibrado automaticamente pelo saldo do banco (OFX)
+    "saldo_conta_banco_cent": "",          # último saldo informado pelo banco
+    "saldo_conta_banco_data": "",          # data desse saldo (iso)
+    "saldo_poupanca_atual_cent": "0",      # saldo atual da poupança/investimentos (você informa)
     "dia_limite_mensalidade": "12",     # alunos pagam tipicamente dia 1–12
 }
 

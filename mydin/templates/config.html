@@ -14,12 +14,18 @@
     <input type="text" name="aluguel_estudio_cent" value="{{ '%.2f'|format(v.get('aluguel_estudio_cent','150000')|int / 100)|replace('.', ',') }}"></label>
   <label>Piso de custo fixo (R$)
     <input type="text" name="piso_fixo_cent" value="{{ '%.2f'|format(v.get('piso_fixo_cent','430000')|int / 100)|replace('.', ',') }}"></label>
-  <label>Saldo inicial da conta (R$ — anterior à primeira transação importada)
-    <input type="text" name="saldo_inicial_conta_cent" value="{{ '%.2f'|format(v.get('saldo_inicial_conta_cent','0')|int / 100)|replace('.', ',') }}"></label>
-  <label>Saldo inicial da poupança/investimentos (R$)
-    <input type="text" name="saldo_inicial_poupanca_cent" value="{{ '%.2f'|format(v.get('saldo_inicial_poupanca_cent','0')|int / 100)|replace('.', ',') }}"></label>
+  <label>Saldo atual da conta (R$)
+    <input type="text" name="saldo_conta_banco_cent" value="{{ '%.2f'|format((v.get('saldo_conta_banco_cent') or '0')|int / 100)|replace('.', ',') }}">
+    <span class="mini">Preenchido sozinho ao importar o OFX{% if v.get('saldo_conta_banco_data') %} (banco em {{ v.get('saldo_conta_banco_data')|data_br }}){% endif %}. Ajuste se precisar.</span>
+  </label>
+  <label>Saldo atual da poupança/investimentos (R$)
+    <input type="text" name="saldo_poupanca_atual_cent" value="{{ '%.2f'|format((v.get('saldo_poupanca_atual_cent') or '0')|int / 100)|replace('.', ',') }}">
+    <span class="mini">Você informa (o app não importa a carteira digital). Ex.: ~33.640.</span>
+  </label>
   <button type="submit">Salvar</button>
 </form>
+<p class="nota">Patrimônio = saldo atual da conta + poupança. O saldo da conta vem do próprio
+banco (campo do OFX), então é imune a erro de classificação — é o termômetro real.</p>
 
 <section class="painel">
   <h2>Dados mapeados</h2>

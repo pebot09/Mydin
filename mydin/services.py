@@ -6,7 +6,7 @@ Categorização serve para entender o fluxo, não para medir se está bem.
 """
 import datetime as dt
 
-from .db import cfg_int
+from .db import cfg, cfg_int
 
 TURMAS = ["seg17h", "seg19h", "qui09h", "qui11h"]
 
@@ -33,18 +33,28 @@ def saldo_conta(db, ate=None):
 
 
 def saldo_poupanca(db, ate=None):
-    """Poupança = inicial + aplicações (saídas INT) − resgates (entradas INT).
-    Transferência interna reclassificada como gasto sai automaticamente daqui."""
-    where, params = "conta='nuconta' AND categoria_id='INT'", []
-    if ate:
-        where += " AND data<=?"
-        params.append(ate)
-    s = db.execute(f"SELECT COALESCE(SUM(-valor_cent),0) s FROM transacoes WHERE {where}", params).fetchone()["s"]
-    return cfg_int(db, "saldo_inicial_poupanca_cent") + s
+    """Poupança = valor atual que você informa (você sabe o número real).
+    Para meses passados, reconstrói a partir das transferências INT posteriores,
+    mas o valor de HOJE é sempre o que você digitou — âncora imune a classificação."""
+    atual = cfg_int(db, "saldo_poupanca_atual_cent")
+    if not ate or ate >= hoje():
+        return atual
+    # desconta o que entrou na poupança DEPOIS de 'ate' (aplicações = saídas INT)
+    fut = db.execute(
+        "SELECT COALESCE(SUM(-valor_cent),0) s FROM transacoes WHERE conta='nuconta' AND categoria_id='INT' AND data>?",
+        (ate,),
+    ).fetchone()["s"]
+    return atual - fut
 
 
 def patrimonio(db, ate=None):
     return saldo_conta(db, ate) + saldo_poupanca(db, ate)
+
+
+def saldo_banco_info(db):
+    """(saldo informado pelo banco em centavos, data iso) ou (None, None)."""
+    v = cfg(db, "saldo_conta_banco_cent")
+    return (int(v) if v not in (None, "") else None), cfg(db, "saldo_conta_banco_data")
 
 
 def variacao_patrimonio_mes(db, mes=None):
@@ -135,16 +145,118 @@ def custo_fixo_variavel_mes(db, mes=None):
     return fixo, variavel, g
 
 
-def alunos_sem_pagamento_mes(db, mes=None):
+def _mes_menos(mes, n):
+    ano, m = int(mes[:4]), int(mes[5:7])
+    idx = ano * 12 + (m - 1) - n
+    return f"{idx // 12:04d}-{idx % 12 + 1:02d}"
+
+
+def alunos_sem_pagamento_mes(db, mes=None, janela=3):
+    """Alunos que se ESPERA que paguem e ainda não pagaram no mês.
+
+    'Esperado' = aluno ativo que pagou em algum dos `janela` meses anteriores.
+    Assim ex-alunos (sem pagamento recente) nunca aparecem como pendência —
+    é a inferência 'pelo padrão' que o app deve fazer, não 'todo ativo'."""
     mes = mes or mes_atual()
+    inicio = _mes_menos(mes, janela)
     return db.execute(
-        """SELECT a.* FROM alunos a WHERE a.ativo=1 AND a.id NOT IN (
-             SELECT c.aluno_id FROM transacoes t JOIN contatos c ON c.id=t.contato_id
-             WHERE substr(t.data,1,7)=? AND t.categoria_id='ENS' AND t.valor_cent>0
-               AND c.aluno_id IS NOT NULL)
+        """SELECT a.* FROM alunos a
+           WHERE a.ativo=1
+             AND EXISTS (
+               SELECT 1 FROM transacoes t JOIN contatos c ON c.id=t.contato_id
+               WHERE c.aluno_id=a.id AND t.categoria_id='ENS' AND t.valor_cent>0
+                 AND substr(t.data,1,7) >= ? AND substr(t.data,1,7) < ?)
+             AND NOT EXISTS (
+               SELECT 1 FROM transacoes t JOIN contatos c ON c.id=t.contato_id
+               WHERE c.aluno_id=a.id AND t.categoria_id='ENS' AND t.valor_cent>0
+                 AND substr(t.data,1,7) = ?)
            ORDER BY a.turma, a.nome""",
-        (mes,),
+        (inicio, mes, mes),
     ).fetchall()
+
+
+def _periodo_where(mes=None, de=None, ate=None, alias="t"):
+    conds, params = [f"{alias}.data <= date('now')"], []
+    if mes:
+        conds.append(f"substr({alias}.data,1,7)=?")
+        params.append(mes)
+    else:
+        if de:
+            conds.append(f"{alias}.data>=?")
+            params.append(de)
+        if ate:
+            conds.append(f"{alias}.data<=?")
+            params.append(ate)
+    return " AND ".join(conds), params
+
+
+def meses_no_periodo(db, mes=None, de=None, ate=None):
+    w, p = _periodo_where(mes, de, ate)
+    return [r["m"] for r in db.execute(
+        f"SELECT DISTINCT substr(t.data,1,7) m FROM transacoes t WHERE {w} ORDER BY m", p)]
+
+
+def despesas_por_categoria(db, mes=None, de=None, ate=None):
+    """Subtotais de despesa por categoria no período (líquidos: entradas na mesma
+    categoria abatem, ex.: ajuda da mãe na terapia)."""
+    w, p = _periodo_where(mes, de, ate)
+    rows = db.execute(
+        f"""SELECT t.categoria_id cat, k.nome nome, COALESCE(SUM(-t.valor_cent),0) s, COUNT(*) n
+            FROM transacoes t JOIN categorias k ON k.id=t.categoria_id
+            WHERE {w} AND k.grupo='despesa'
+            GROUP BY t.categoria_id ORDER BY s DESC""", p).fetchall()
+    total = sum(r["s"] for r in rows)
+    return rows, total
+
+
+def transacoes_despesa(db, categoria, mes=None, de=None, ate=None):
+    w, p = _periodo_where(mes, de, ate)
+    return db.execute(
+        f"""SELECT t.*, c.nome contato_nome FROM transacoes t
+            LEFT JOIN contatos c ON c.id=t.contato_id
+            WHERE {w} AND t.categoria_id=? ORDER BY t.data DESC""", p + [categoria]).fetchall()
+
+
+def saidas_a_categorizar(db, mes=None, de=None, ate=None):
+    """Saídas ainda sem categoria no período — o que falta você classificar."""
+    w, p = _periodo_where(mes, de, ate)
+    return db.execute(
+        f"""SELECT t.*, c.nome contato_nome FROM transacoes t
+            LEFT JOIN contatos c ON c.id=t.contato_id
+            WHERE {w} AND t.valor_cent<0 AND t.categoria_id IS NULL
+              AND t.conta IN ('nuconta','nucartao','manual') AND COALESCE(t.especial,'')=''
+            ORDER BY t.data DESC""", p).fetchall()
+
+
+def receita_ensino_periodo(db, mes=None, de=None, ate=None):
+    total, pagantes = 0, 0
+    for m in meses_no_periodo(db, mes, de, ate):
+        r, n = receita_ensino_mes(db, m)
+        total += r
+        pagantes += n
+    return total, pagantes
+
+
+def receita_musica_por_cliente(db, mes=None, de=None, ate=None):
+    w, p = _periodo_where(mes, de, ate)
+    return db.execute(
+        f"""SELECT COALESCE(c.nome,'(sem contato)') nome, COALESCE(SUM(t.valor_cent),0) s, COUNT(*) n
+            FROM transacoes t LEFT JOIN contatos c ON c.id=t.contato_id
+            WHERE {w} AND t.valor_cent>0 AND t.categoria_id IN ('MUS','SUB')
+            GROUP BY c.id ORDER BY s DESC""", p).fetchall()
+
+
+def receitas_periodo(db, mes=None, de=None, ate=None):
+    ens, pagantes = receita_ensino_periodo(db, mes, de, ate)
+    w, p = _periodo_where(mes, de, ate)
+    mus = db.execute(
+        f"""SELECT COALESCE(SUM(valor_cent),0) s FROM transacoes t
+            WHERE {w} AND valor_cent>0 AND categoria_id IN ('MUS','SUB')""", p).fetchone()["s"]
+    sub = db.execute(
+        f"""SELECT COALESCE(SUM(valor_cent),0) s FROM transacoes t
+            WHERE {w} AND valor_cent>0 AND categoria_id='SUB'""", p).fetchone()["s"]
+    return {"ensino": ens, "pagantes": pagantes, "musica": mus, "sub": sub, "total": ens + mus,
+            "por_cliente": receita_musica_por_cliente(db, mes, de, ate)}
 
 
 def compromissos_futuros(db):

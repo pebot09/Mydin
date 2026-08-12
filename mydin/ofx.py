@@ -8,6 +8,7 @@ from decimal import Decimal, InvalidOperation
 
 RE_STMTTRN = re.compile(r"<STMTTRN>(.*?)(?:</STMTTRN>|(?=<STMTTRN>)|\Z)", re.S | re.I)
 RE_FIELD = re.compile(r"<(\w+)>([^<\r\n]*)")
+RE_LEDGERBAL = re.compile(r"<LEDGERBAL>(.*?)</LEDGERBAL>", re.S | re.I)
 # CPF mascarado do Nubank: •••.085.407-•• (às vezes com * no lugar de •)
 RE_CPF_MASC = re.compile(r"[•*]{3}\.?\d{3}\.\d{3}[-.][•*]{2}")
 
@@ -95,4 +96,14 @@ def parse_ofx(conteudo_bytes):
             "contato_nome": nome,
             "contato_cpf": cpf,
         })
-    return tipo, transacoes
+
+    # Saldo informado pelo próprio banco (imune a erro de classificação)
+    saldo = None
+    mb = RE_LEDGERBAL.search(texto)
+    if mb:
+        campos = {t.upper(): v.strip() for t, v in RE_FIELD.findall(mb.group(1))}
+        bal = _parse_valor_cent(campos.get("BALAMT", ""))
+        data_bal = _parse_data(campos.get("DTASOF", ""))
+        if bal is not None:
+            saldo = {"balamt_cent": bal, "dtasof": data_bal}
+    return tipo, transacoes, saldo

@@ -1,0 +1,14 @@
+{% macro seletor(rota, mes, de, ate, meses) %}
+<form method="get" action="{{ url_for(rota) }}" class="filtros painel periodo">
+  <label class="linha">Mês
+    <select name="mes" onchange="this.form.submit()">
+      <option value="">— intervalo / tudo —</option>
+      {% for m in meses|reverse %}<option value="{{ m }}" {% if m==mes %}selected{% endif %}>{{ m|mes_br }}</option>{% endfor %}
+    </select>
+  </label>
+  <span class="mini">ou intervalo:</span>
+  <input type="date" name="de" value="{{ de or '' }}">
+  <input type="date" name="ate" value="{{ ate or '' }}">
+  <button type="submit">Ver</button>
+</form>
+{% endmacro %}
