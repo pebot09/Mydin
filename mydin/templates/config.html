@@ -22,6 +22,21 @@
 </form>
 
 <section class="painel">
+  <h2>Dados mapeados</h2>
+  <p class="nota">Carrega de uma vez os alunos, clientes de música, contatos fixos (roommate,
+  estúdio, terapia, ateliê), vendedores de medicina, multi-relação e as regras de
+  categoria que você mapeou dos 30 meses de extrato. É seguro: casa por CPF mascarado e
+  não duplica se você clicar de novo. Depois de importar os OFX, a classificação já vem
+  pronta para a maioria dos lançamentos.</p>
+  <form method="post" action="{{ url_for('mydin.seed') }}">
+    <button type="submit">Carregar dados mapeados</button>
+  </form>
+  <p class="mini">Você ainda precisará: atribuir a <strong>turma</strong> de cada aluno na aba Ensino;
+  conferir alguns contatos sem CPF (marcados para buscar); e revisar Vitor Novello (é cliente de
+  música <em>e</em> foi roommate antigo — entradas são música, saídas antigas são moradia).</p>
+</section>
+
+<section class="painel">
   <h2>Vendedores de medicina conhecidos</h2>
   <p class="nota">Lista editável — pagamento a quem está aqui vira MED automático; fora da lista vai para revisão.
   Adicione/remova na página do contato.</p>

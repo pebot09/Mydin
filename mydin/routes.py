@@ -10,6 +10,7 @@ from .classify import aplicar_classificacao, _norm
 from .db import TURMAS, cfg, cfg_int, get_db, novo_id, set_cfg
 from .importer import importar_ofx
 from .pdf_orc import gerar_pdf_orcamento
+from .seed import popular
 from .xlsx_io import exportar, nome_backup, restaurar
 
 bp = Blueprint("mydin", __name__)
@@ -706,6 +707,17 @@ def config():
         """SELECT r.*, c.nome contato_nome FROM regras r
            LEFT JOIN contatos c ON c.id=r.contato_id ORDER BY r.criado_em DESC""").fetchall()
     return render_template("config.html", v=valores, vendedores=vendedores, regras=regras)
+
+
+@bp.route("/seed", methods=["POST"])
+def seed():
+    db = get_db()
+    r = popular(db)
+    db.commit()
+    flash(f"Dados mapeados carregados: {r['alunos']} alunos, {r['contatos']} contatos, "
+          f"{r['regras']} regras e {r['vendedores']} vendedores de medicina. "
+          "Rodar de novo não duplica.", "ok")
+    return redirect(url_for("mydin.config"))
 
 
 @bp.route("/regras/<rid>/excluir", methods=["POST"])
