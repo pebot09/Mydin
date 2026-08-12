@@ -5,6 +5,10 @@
 
 cd "$(dirname "$0")" || exit 1
 
+# Remove a "quarentena" que o macOS põe em arquivos baixados, para o app
+# não ser bloqueado a cada arquivo. Silencioso e sem efeito se já limpo.
+xattr -dr com.apple.quarantine "$(dirname "$0")" 2>/dev/null
+
 echo "═══════════════════════════════════════════"
 echo "  Mydin — gestão financeira local"
 echo "═══════════════════════════════════════════"
