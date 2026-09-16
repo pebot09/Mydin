@@ -1,92 +1,162 @@
 # Mydin
 
-App pessoal, **local-first**, de gestão financeira e de trabalho para quem vive de
-ensino de cerâmica + produção musical. Importa OFX do Nubank (conta e faturas de
-cartão), classifica pelas regras do negócio e mede a saúde financeira pelo
-**patrimônio real** — não pela soma de categorias.
+Ferramenta de análise financeira pessoal que roda **inteira dentro do seu celular**.
+Sem servidor, sem nuvem, sem computador ligado: você abre no Chrome, instala na tela
+de início e usa como aplicativo. Os dados ficam no armazenamento do próprio aparelho
+e nunca saem dele.
 
-> **Princípio central:** patrimônio (conta + poupança) é o termômetro, imune a erro
-> de classificação. Categorização serve para *entender* o fluxo, não para medir se
-> você está bem. O app mostra as duas coisas, deixando claro qual é qual.
+Feito para quem vive de renda variável — ensino de cerâmica + produção musical — e
+precisa responder três perguntas o tempo todo: **estou bem?**, **o que mudou?** e
+**para onde isso aponta?**
 
-## Rodando
+---
 
-**Mac (jeito fácil):** dê duplo clique em **`Abrir Mydin.command`**. Na primeira vez
-ele prepara tudo sozinho (cria um ambiente Python isolado e instala as
-dependências); depois só sobe o servidor, abre o navegador e mostra o endereço
-para acessar do celular no mesmo Wi-Fi. Se o macOS bloquear o atalho na primeira
-vez, clique com o botão direito → Abrir → Abrir (ou rode `chmod +x "Abrir
-Mydin.command"` no terminal dentro da pasta).
+## Instalar no celular
 
-**Qualquer sistema (terminal):**
+1. Publique a pasta (veja [Publicar](#publicar)) e abra o endereço no **Chrome** do celular.
+2. Menu **⋮ → Adicionar à tela inicial** (ou *Instalar app*).
+   No iPhone: **Compartilhar → Adicionar à Tela de Início**.
+3. Pronto: abre em tela cheia, sem barra de navegador, com ícone próprio, e
+   **funciona offline** depois da primeira visita.
 
-```bash
-pip install -r requirements.txt
-python run.py            # abre em http://127.0.0.1:5000
-python run.py --host 0.0.0.0 --port 8080   # para acessar do celular na rede local
+Na primeira vez, faça isto dentro do app, em **Dados**:
+
+| Aba | O que fazer |
+|---|---|
+| **Ajustes** | Informe o saldo da poupança/investimentos e seu nome completo como aparece no banco. |
+| **Cadastro inicial** | Toque em *Carregar meu cadastro* — traz alunos, clientes, contatos fixos e regras de uma vez. |
+| **Importar** | Escolha os arquivos **OFX** do Nubank (conta e faturas). Pode mandar vários juntos. |
+| **Revisar** | O que sobrar sem classificação, resolva em lote. O app aprende com cada escolha. |
+| **Ensino** | Atribua a **turma** de cada aluno (o cadastro vem sem turma). |
+
+---
+
+## As cinco telas
+
+### Hoje — estou bem?
+- **Patrimônio** (conta + poupança) e a variação do mês.
+- **Fôlego**: quantos meses a reserva sustenta o seu ritmo de gasto se a receita parar.
+- **Taxa de poupança**: quanto de cada R$ 100 que entram realmente sobra.
+- **Ritmo do mês**: o gasto até hoje comparado ao mesmo dia dos meses anteriores,
+  com a projeção de fechamento — dá para corrigir a rota antes do mês acabar.
+- **Alertas acionáveis**: quem não pagou, o que falta revisar, parcelas já comprometidas.
+
+### Fluxo — de onde vem, para onde vai
+- Entrou × saiu mês a mês, em caixa real.
+- Gasto por categoria **com a variação contra o período anterior** — responde
+  *o que mudou*, que é o que um total sozinho nunca responde.
+- **Ponto de equilíbrio**: quantos alunos pagantes cobrem o custo fixo e o custo total.
+- **Concentração da receita**: quanto do seu dinheiro depende de uma pessoa só.
+  Concentração alta é risco.
+- Toque numa categoria para ver os lançamentos por trás dela.
+
+### Tendências — para onde isso aponta
+- Patrimônio com **projeção de 6 meses** e o r² dizendo o quanto confiar nela.
+- Entradas e saídas em **média móvel de 3 meses** (tira o ruído do mês atípico).
+- **Sazonalidade**: a média por mês do calendário, para reservar caixa antes do vale.
+- **Anomalias**: lançamentos muito acima da mediana da própria categoria.
+- **Ano contra ano** e a **reconciliação** (abaixo).
+
+### Ensino — a base do negócio
+- Ocupação contra o potencial, vagas ociosas e o que elas custam por mês.
+- Quem costuma pagar e ainda não pagou (ex-aluno nunca vira cobrança).
+- **Retenção**: permanência média, quanto cada aluno rende na vida toda, e o gráfico
+  de entradas × saídas — o sinal mais antecipado de queda de receita.
+
+### Dados — importar, revisar, pessoas, ajustes
+Fila de revisão em lote, cadastro de pessoas, regras, backup e configuração.
+
+---
+
+## Como o app decide se você está bem
+
+**Patrimônio é o termômetro.** Ele vem do saldo que o próprio banco informa no OFX,
+então continua certo mesmo que toda a categorização esteja errada.
+
+**Os indicadores de saúde usam caixa real, não categoria.** Fôlego, taxa de poupança
+e ritmo do mês contam todo dinheiro que entrou e saiu da conta e do cartão. Se
+metade dos lançamentos estivesse parada na fila de revisão, um "gasto por categoria"
+diria que está tudo ótimo — e estaria mentindo. Ficam de fora só o que não é fluxo:
+transferência para você mesmo e as duas pernas do pagamento de fatura.
+
+**A categorização serve para entender a composição**, não para medir saúde. Por isso
+o app mostra as duas coisas lado a lado e, de propósito, mostra também a diferença:
+a tela de Tendências tem uma **reconciliação** entre a sobra contábil e a variação
+real de patrimônio. Diferença grande quer dizer *falta classificar*, não *você
+empobreceu*.
+
+## Regras do negócio embutidas
+
+- **Ensino**: receita = pagantes × cota (R$ 232,50; meia = metade). Não é a soma do
+  que cada um pagou. O repasse ao ateliê é pass-through, nunca despesa.
+- **Identificação de pessoa**: a chave é o **CPF mascarado** do Pix — estável mesmo
+  se a pessoa trocar de banco. O cadastro é a fonte da verdade; a heurística de
+  mensalidade (recorrência ≥ 3 meses, R$ 180–700, dia 1–12) apenas *sugere* e cai na
+  revisão. Teto rígido de R$ 700: acima disso nunca é mensalidade.
+- **Música**: cliente cadastrado → toda entrada é receita, qualquer valor.
+- **Cartão sem contagem dupla**: só as compras da fatura contam; "Pagamento de
+  fatura" e "Pagamento recebido" são ignorados dos dois lados. Parcelas com data
+  futura não são gasto realizado — aparecem em *já comprometido*.
+- **Multi-relação**: pessoa marcada como tal vai **sempre** para revisão manual,
+  qualquer valor, qualquer sentido. É feature, não limitação.
+- **Pix pequenos**: < R$ 10 para pessoa física → caridade; avulso ou amigo ≤ R$ 100 → geral.
+- **O app aprende**: classificou um estabelecimento ou uma pessoa uma vez, vale sempre.
+- **Deduplicação**: reimportar um período que já entrou nunca duplica (chave conta+FITID).
+
+---
+
+## Publicar
+
+O app é um site estático — não tem backend, não tem build, não tem dependências.
+Qualquer hospedagem de arquivos serve. Os caminhos são todos relativos, então
+funciona na raiz ou em subpasta.
+
+**GitHub Pages:** *Settings → Pages → Deploy from a branch → `main` / `/ (root)`*.
+O endereço fica `https://<usuário>.github.io/<repo>/`.
+
+> ⚠️ **Antes de tornar o repositório público**, apague o `dados-iniciais.json` — ele
+> contém nomes e CPFs mascarados de alunos e clientes. Você só precisa dele uma vez:
+> depois de tocar em *Carregar meu cadastro*, tudo já está salvo no aparelho.
+> ```bash
+> git rm dados-iniciais.json && git commit -m "Remove cadastro do repositório público"
+> ```
+> Se preferir manter o repositório privado, use **Cloudflare Pages** ou **Netlify** —
+> ambos publicam de repositório privado no plano gratuito.
+
+Os seus lançamentos **nunca** vão para a hospedagem em nenhum dos casos: eles só
+existem no IndexedDB do seu celular.
+
+## Onde os dados moram (e como não perdê-los)
+
+Tudo fica no **IndexedDB do navegador**, no aparelho. Nada é enviado para lugar
+nenhum — nem os arquivos OFX, que são lidos dentro da própria página.
+
+Isso significa que **limpar os dados do site, desinstalar o navegador ou perder o
+celular apaga tudo**. Em *Dados → Ajustes → Backup*, exporte um `.json` de vez em
+quando e guarde onde você confia. O mesmo arquivo restaura em qualquer aparelho.
+
+## Estrutura
+
+```
+index.html            página única
+manifest.webmanifest  instalação como app
+sw.js                 cache offline
+css/app.css           interface
+icons/                ícone do app
+js/
+  app.js              navegação e início
+  store.js            IndexedDB + estado em memória
+  dominio.js          categorias, turmas, configuração
+  ofx.js              leitor de OFX
+  classify.js         motor de categorização
+  importar.js         importação e ancoragem do saldo
+  cadastro.js         carga do cadastro inicial
+  analytics.js        todo o cálculo analítico
+  charts.js           gráficos em SVG (sem biblioteca)
+  ui.js               peças de interface
+  format.js           formatação pt-BR
+  views/              as cinco telas
 ```
 
-**No celular:** com o servidor rodando, abra o endereço indicado no navegador do
-celular e use "Adicionar à Tela de Início" (Safari) / "Adicionar à tela inicial"
-(Chrome) — o Mydin instala como app, com ícone e tela cheia.
-
-O banco SQLite fica em `data/mydin.db` (fora do git — o `.gitignore` cobre
-`*.db`, `*.ofx`, `*.xlsx` e a pasta `data/`). Nada vai para a nuvem.
-
-## Primeiros passos
-
-1. **Configurações (⚙):** informe seu nome completo (detecta transferências para a
-   própria poupança → INT) e os saldos iniciais de conta e poupança.
-2. **Importar:** faça upload dos OFX — aceita vários arquivos de uma vez (carga
-   histórica) ou um por mês. Conta × fatura de cartão é detectado automaticamente;
-   reimportar período sobreposto nunca duplica (deduplicação por FITID).
-3. **Contatos:** o app cria contatos automaticamente pelo CPF mascarado dos Pix.
-   Marque os tipos (aluno, cliente de música, `amigo_multi`…), vincule pagadores a
-   alunos e crie regras permanentes (roommate → MOR, terapeuta → TER, Carolina →
-   REP, Carlos Trilha → EST, mãe → TER para deixar a terapia líquida).
-4. **Ensino:** cadastre os alunos por turma e vincule os contatos pagadores.
-5. **Fila de revisão:** classifique em lote o que sobrou; marque "criar regra
-   permanente" para o app aprender.
-
-## Regras implementadas
-
-- **Patrimônio** = saldo conta + poupança; variação mensal é a métrica principal.
-- **Ensino:** receita = pagantes × cota (R$ 232,50; meia = metade — flag na
-  transação). Repasse à Carolina é pass-through (REP), nunca despesa. Painel com
-  % do potencial (R$ 6.510 = 232,50 × 7 × 4), vagas ociosas e quem não pagou.
-- **Identificação de aluno:** cadastro é a fonte da verdade. Heurística
-  (recorrência ≥ 3 meses, R$ 180–700, dia 1–12) apenas **sugere** e cai na
-  revisão. Teto rígido de R$ 700: acima disso nunca é mensalidade.
-- **Música:** cliente cadastrado → toda entrada é MUS. Aluguel do estúdio pago
-  abaixo de R$ 1.500 → botão de **abatimento** registra EST cheia + SUB pela
-  diferença (trabalho trocado por aluguel; patrimônio inalterado).
-- **Cartão sem contagem dupla:** só as compras da fatura contam; "Pagamento de
-  fatura" (conta) e "Pagamento recebido" (fatura) são ignorados. Parcelas com
-  data futura ficam fora dos gastos realizados e aparecem em **compromissos
-  futuros**.
-- **Transferências internas (INT)** nunca são gasto nem receita; se um envio à
-  carteira digital foi na verdade um gasto, basta trocar a categoria — a poupança
-  se ajusta sozinha.
-- **Multi-relação (`amigo_multi` / sempre revisar):** vai direto para revisão
-  manual, qualquer valor, qualquer sentido. Feature, não limitação.
-- **Pix pequenos:** < R$ 10 p/ pessoa física → CARIDADE; pessoa única vez ≤
-  R$ 100 → GERAL; amigo ≤ R$ 100 → GERAL sem perguntar.
-- **Compras compartilhadas:** saída marcada como compartilhada; reembolsos entram
-  como REEMB (não-receita) e podem ser vinculados para calcular seu custo real.
-- **Cartão aprende:** classificou "Padaria X" uma vez → toda compra futura lá cai
-  igual (regras de estabelecimento, editáveis em ⚙).
-
-## Funcionalidades
-
-Painel principal (patrimônio, receita ensino × música, fixo × variável, alertas) ·
-Painel de ensino · Projetos de música (orçamento → PDF, cronômetro **e**
-lançamento manual de horas, sinal/saldo 50/50, parcelas, valor/hora real e
-comparativo por modalidade) · Contas a receber (mensalidades inferidas, parcelas,
-reembolsos) · Estatísticas (séries mensais, melhor/pior mês, proporção
-música × cerâmica, sazonalidade) · Backup/restauração completa em .xlsx.
-
-## Segurança dos dados
-
-- Repositório deve permanecer **privado**; só código é versionado.
-- Sem chaves ou credenciais no código.
-- Backups .xlsx contêm seus dados — guarde fora do repositório.
+Tudo em JavaScript puro, sem framework e sem etapa de build: o que está no
+repositório é exatamente o que roda no celular.

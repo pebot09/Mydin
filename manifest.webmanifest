@@ -1,0 +1,26 @@
+{
+  "name": "Mydin — Finanças",
+  "short_name": "Mydin",
+  "description": "Análise financeira pessoal. Seus dados ficam no seu celular.",
+  "lang": "pt-BR",
+  "dir": "ltr",
+  "start_url": ".",
+  "scope": ".",
+  "id": "mydin",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "portrait",
+  "background_color": "#f4f3f0",
+  "theme_color": "#0f766e",
+  "categories": ["finance", "productivity"],
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "icons/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ],
+  "shortcuts": [
+    { "name": "Importar extrato", "url": "./#dados", "description": "Trazer um OFX novo" },
+    { "name": "Tendências", "url": "./#tendencias", "description": "Para onde as contas apontam" }
+  ]
+}

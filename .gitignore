@@ -1,24 +1,16 @@
-# Dados sensíveis — NUNCA versionar
-*.db
-*.db-journal
-*.db-wal
-*.db-shm
-*.sqlite
-*.sqlite3
+# Seus dados — NUNCA versionar
+mydin-backup-*.json
 *.ofx
 *.OFX
-*.xlsx
 *.csv
+*.xlsx
+*.db
+*.sqlite3
 data/
 backups/
-uploads/
-
-# Python
-__pycache__/
-*.pyc
-.venv/
-venv/
 
 # Ambiente
+.DS_Store
+node_modules/
 .env
 *.local
