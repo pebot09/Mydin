@@ -3,7 +3,7 @@
 import * as A from '../analytics.js';
 import { nomeCategoria } from '../dominio.js';
 import { pessoa as buscarPessoa } from '../store.js';
-import { moeda, moedaRedonda, moedaSinal, mesBR, mesLongo, pct, pctSinal, num, dataBR, eixoMoeda } from '../format.js';
+import { moeda, moedaRedonda, moedaSinal, mesBR, mesLongo, pct, pctSinal, num, dataBR, eixoMoeda, plural } from '../format.js';
 import { cartao, secao, ligarDicas, tom, folha, $, esc } from '../ui.js';
 import { linha, barrasAgrupadas, ranking, legenda } from '../charts.js';
 
@@ -25,6 +25,10 @@ export function render(host) {
   const maiores = A.maioresGastos(de, A.hoje(), 8);
 
   const ultimos12 = serie.slice(-12);
+  const seq = A.sequenciaPositiva();
+  const ext = A.extremos();
+  const fechados = serie.filter((x) => x.mes < A.mesAtual());
+  const guardadoTotal = fechados.reduce((a, x) => a + x.caixaLiquido, 0);
   const tendReceita = A.tendenciaLinear(ultimos12.map((s) => s.entradaReal));
   const tendGasto = A.tendenciaLinear(ultimos12.map((s) => s.saidaReal));
 
@@ -59,6 +63,42 @@ export function render(host) {
         sub: proj ? 'se nada mudar de rota' : '—',
       })}
     </div>
+
+    ${ext ? secao('O histórico em números', `
+      <div class="painel">
+        <p class="folha-texto" style="margin-bottom:14px">
+          ${seq.seguidos > 0
+            ? `<strong>${seq.seguidos} ${plural(seq.seguidos, 'mês seguido', 'meses seguidos')}</strong> fechando no azul.`
+            : 'O último mês fechado terminou no vermelho.'}
+          ${seq.de ? ` ${seq.positivos} de ${seq.de} meses recentes foram positivos.` : ''}
+        </p>
+        <div class="grade-stats">
+          <div>
+            <span class="col-rotulo">Sobrou no total</span>
+            <strong class="${tom(guardadoTotal)}">${moedaSinal(guardadoTotal)}</strong>
+            <span class="stat-sub">${fechados.length} ${plural(fechados.length, 'mês fechado', 'meses fechados')}</span>
+          </div>
+          <div>
+            <span class="col-rotulo">Média por mês</span>
+            <strong class="${tom(Math.round(guardadoTotal / Math.max(1, fechados.length)))}">
+              ${moedaSinal(Math.round(guardadoTotal / Math.max(1, fechados.length)))}</strong>
+            <span class="stat-sub">do que entrou menos o que saiu</span>
+          </div>
+          <div>
+            <span class="col-rotulo">Melhor mês</span>
+            <strong class="bom">${moedaSinal(ext.caixa.melhor.caixaLiquido)}</strong>
+            <span class="stat-sub">${mesBR(ext.caixa.melhor.mes)} · entrou ${moedaRedonda(ext.caixa.melhor.entradaReal)}</span>
+          </div>
+          <div>
+            <span class="col-rotulo">Pior mês</span>
+            <strong class="ruim">${moedaSinal(ext.caixa.pior.caixaLiquido)}</strong>
+            <span class="stat-sub">${mesBR(ext.caixa.pior.mes)} · saiu ${moedaRedonda(ext.caixa.pior.saidaReal)}</span>
+          </div>
+        </div>
+        <p class="nota">Mês de maior saída: ${mesBR(ext.saida.melhor.mes)}
+        (${moedaRedonda(ext.saida.melhor.saidaReal)}). Mês de maior entrada:
+        ${mesBR(ext.entrada.melhor.mes)} (${moedaRedonda(ext.entrada.melhor.entradaReal)}).</p>
+      </div>`, 'Só meses fechados — o corrente ainda está rodando') : ''}
 
     ${secao('Patrimônio e projeção', `
       <div class="painel">

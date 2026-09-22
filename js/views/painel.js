@@ -1,27 +1,49 @@
 // Tela "Hoje" — responde a única pergunta que importa ao abrir o app:
-// estou bem, e o que precisa da minha atenção agora?
+// estou bem, o que precisa de mim agora, e o que vem pela frente?
 
 import * as A from '../analytics.js';
-import { moeda, moedaRedonda, moedaSinal, mesLongo, mesBR, pct, pctSinal, num, plural, eixoMoeda } from '../format.js';
-import { cartao, secao, ligarDicas, tom, irPara, $, $$, esc } from '../ui.js';
-import { sparkline, barrasDivergentes } from '../charts.js';
+import * as P from '../previsao.js';
+import { salvarConfig, estado } from '../store.js';
+import { nomeCategoria } from '../dominio.js';
+import { moeda, moedaRedonda, moedaSinal, mesLongo, mesBR, dataBR, pct, pctSinal, num, plural,
+  eixoMoeda } from '../format.js';
+import { cartao, secao, ligarDicas, tom, irPara, recarregar, aviso, $, $$, esc } from '../ui.js';
+import { sparkline, barrasDivergentes, proporcao, medidor } from '../charts.js';
 
 const ICONE = { grave: '●', atencao: '▲', leve: '•' };
+const DIAS_ADIAMENTO = 14;
+
+/** A conclusão do mês em palavras, antes de qualquer número solto. */
+function resumoDoTopo({ mes, caixa, folego }) {
+  const partes = [];
+  if (caixa.entrada > 0) {
+    const p = (caixa.liquido / caixa.entrada) * 100;
+    partes.push(`Em ${mesLongo(mes)} entraram <strong>${moedaRedonda(caixa.entrada)}</strong>`
+      + ` e saíram <strong>${moedaRedonda(caixa.saida)}</strong> — `
+      + (caixa.liquido >= 0
+        ? `sobrou <strong class="bom">${moedaRedonda(caixa.liquido)}</strong>, ${pct(p)} do que entrou.`
+        : `faltaram <strong class="ruim">${moedaRedonda(-caixa.liquido)}</strong>, que saíram da reserva.`));
+  } else {
+    partes.push(`Nada entrou ainda em ${mesLongo(mes)}.`);
+  }
+  if (folego.meses !== null) {
+    partes.push(folego.meses >= folego.alvoMeses
+      ? `Sua reserva cobre <strong>${num(folego.meses, 1)} meses</strong> de gasto, acima da meta de ${folego.alvoMeses}.`
+      : `Sua reserva cobre <strong class="${folego.meses < 3 ? 'ruim' : ''}">${num(folego.meses, 1)} meses</strong>`
+        + ` de gasto, abaixo da meta de ${folego.alvoMeses}.`);
+  }
+  return partes.join(' ');
+}
+
+const SELO = {
+  confirmado: { texto: 'já lançado', classe: '' },
+  previsto: { texto: 'previsto', classe: 'previsto' },
+  atrasado: { texto: 'atrasado', classe: 'aviso' },
+};
 
 export function render(host) {
   const mes = A.mesAtual();
   const serie = A.serieMensal();
-  const pat = A.patrimonio();
-  const variacao = A.variacaoPatrimonioMes(mes);
-  const f = A.folego();
-  const taxa = A.taxaPoupanca();
-  const ritmo = A.ritmoDoMes();
-  const ens = A.receitaEnsinoMes(mes);
-  const mus = A.receitaMusicaMes(mes);
-  const g = A.gastoMes(mes);
-  const caixa = A.caixaRealMes(mes);
-  const alertas = A.alertas();
-  const futuros = A.comprometidoFuturo();
 
   if (!serie.length) {
     host.innerHTML = `
@@ -37,15 +59,36 @@ export function render(host) {
     return;
   }
 
+  const pat = A.patrimonio();
+  const variacao = A.variacaoPatrimonioMes(mes);
+  const f = A.folego();
+  const taxa = A.taxaPoupanca();
+  const ritmo = A.ritmoDoMes();
+  const ens = A.receitaEnsinoMes(mes);
+  const mus = A.receitaMusicaMes(mes);
+  const g = A.gastoMes(mes);
+  const caixa = A.caixaRealMes(mes);
+  const destino = A.destinoDoQueEntrou(mes + '-01', A.fimEfetivo(mes));
+  const meta = A.metaReserva();
+  const alertas = A.alertas();
+  const prox = P.proximosLancamentos(30);
+  const futuros = A.comprometidoFuturo().filter((x) => x.mes > prox.ate.slice(0, 7));
+
   const folegoTom = f.meses === null ? '' : f.meses < 3 ? 'ruim' : f.meses < f.alvoMeses ? '' : 'bom';
 
   host.innerHTML = `
+    <p class="resumo-topo">${resumoDoTopo({ mes, caixa, folego: f })}</p>
+
     <div class="cartoes">
       ${cartao({
         rotulo: 'Patrimônio',
         valor: moeda(pat),
         sub: `<span class="${tom(variacao)}">${moedaSinal(variacao)}</span> em ${mesLongo(mes)}
-              <div id="spark-pat" style="margin-top:6px"></div>`,
+              <div class="cartao-partes">
+                <span>Conta <strong>${moedaRedonda(A.saldoConta())}</strong></span>
+                <span>Poupança <strong>${moedaRedonda(A.saldoPoupanca())}</strong></span>
+              </div>
+              <div id="spark-pat" style="margin-top:8px"></div>`,
         tom: 'destaque',
         dica: 'Conta + poupança/investimentos. É o termômetro real: mesmo que toda a '
           + 'categorização esteja errada, este número continua certo, porque o saldo vem do próprio banco.',
@@ -78,9 +121,11 @@ export function render(host) {
         valor: moedaRedonda(ritmo.gastoAteHoje),
         sub: ritmo.deltaPct === null
           ? 'Sem meses anteriores para comparar'
-          : `<span class="${ritmo.deltaPct > 0 ? 'ruim' : 'bom'}">${pctSinal(ritmo.deltaPct)}</span>
-             vs. média até o dia ${ritmo.dia}<br>
-             <span class="mini">no ritmo atual fecha em ${moedaRedonda(ritmo.projecao)}</span>`,
+          : (Math.abs(ritmo.deltaPct) < 0.5
+              ? `No mesmo ritmo de sempre até o dia ${ritmo.dia}`
+              : `<span class="${ritmo.deltaPct > 0 ? 'ruim' : 'bom'}">${pctSinal(ritmo.deltaPct)}</span>
+                 vs. média até o dia ${ritmo.dia}`)
+            + `<br><span class="mini">no ritmo atual fecha em ${moedaRedonda(ritmo.projecao)}</span>`,
         tom: ritmo.deltaPct !== null && ritmo.deltaPct > 20 ? 'ruim' : '',
         dica: 'Tudo que saiu da conta e do cartão até hoje, comparado ao que costumava ter '
           + 'saído até este mesmo dia nos 3 meses anteriores. Serve para corrigir a rota antes do mês acabar.',
@@ -95,8 +140,66 @@ export function render(host) {
             <div class="alerta-titulo">${esc(a.titulo)}</div>
             <div class="alerta-texto">${esc(a.texto)}</div>
           </div>
-          ${a.acao ? `<button type="button" data-alerta="${i}">${esc(a.acao.texto)}</button>` : ''}
+          <div class="alerta-acoes">
+            ${a.acao ? `<button type="button" data-alerta="${i}">${esc(a.acao.texto)}</button>` : ''}
+            <button type="button" class="alerta-adiar" data-adiar="${i}">Agora não</button>
+          </div>
         </div>`).join('')) : ''}
+
+    ${secao('Próximos 30 dias', `
+      <div class="painel">
+        <div class="tres-colunas">
+          <div><span class="col-rotulo">Entra</span>
+            <strong class="bom">${moedaRedonda(prox.entra)}</strong></div>
+          <div><span class="col-rotulo">Sai</span>
+            <strong class="ruim">${moedaRedonda(prox.sai)}</strong></div>
+          <div><span class="col-rotulo">Sobra</span>
+            <strong class="${tom(prox.liquido)}">${moedaSinal(prox.liquido)}</strong></div>
+        </div>
+        <p class="nota" style="margin-top:10px">Somando o que já está lançado com o que costuma
+        se repetir, o período fecha em <strong class="${tom(prox.liquido)}">${moedaSinal(prox.liquido)}</strong>.
+        Compras no cartão só saem da conta quando a fatura vence.</p>
+        ${prox.itens.length ? `
+          <div class="lista" style="margin-top:8px">
+            ${prox.itens.slice(0, 18).map((i) => {
+              const s = SELO[i.certeza];
+              return `
+              <div class="lista-item" style="cursor:default">
+                <div class="prox-data">
+                  <span class="prox-dia">${i.data.slice(8, 10)}</span>
+                  <span class="prox-mes">${mesBR(i.data.slice(0, 7)).split('/')[0]}</span>
+                </div>
+                <div class="lista-corpo">
+                  <div class="lista-titulo">${esc(i.rotulo)}</div>
+                  <div class="lista-sub">
+                    ${s.texto !== 'já lançado' ? `<span class="etiqueta ${s.classe}">${s.texto}</span> ` : ''}${esc(i.detalhe)}${i.categoria ? ' · ' + esc(nomeCategoria(i.categoria)) : ''}</div>
+                </div>
+                <div class="lista-valor ${i.valorCent > 0 ? 'bom' : ''}">${moedaSinal(i.valorCent)}</div>
+              </div>`;
+            }).join('')}
+          </div>
+          ${prox.itens.length > 18 ? `<p class="nota">Mostrando 18 de ${prox.itens.length}.</p>` : ''}
+        ` : '<p class="mini" style="margin-top:8px">Nada previsto para os próximos 30 dias.</p>'}
+        ${futuros.length ? `<p class="nota">Mais adiante: ${futuros.map((x) =>
+          `${moedaRedonda(x.cent)} em ${mesBR(x.mes)}`).join(' · ')} em parcelas de cartão.</p>` : ''}
+        <p class="nota">“Previsto” é inferido do que se repete todo mês — não é cobrança confirmada.</p>
+      </div>`, 'O que já está lançado e o que costuma cair')}
+
+    ${secao('Para onde foi o que entrou', `
+      <div class="painel">
+        <div id="g-destino"></div>
+        ${destino.livre < 0 ? `<p class="nota ruim">Gastos e aplicações somaram
+          ${moedaRedonda(-destino.livre)} a mais do que entrou — a diferença saiu da reserva.</p>` : ''}
+      </div>`, mesLongo(mes))}
+
+    ${meta ? secao('Reserva', `
+      <div class="painel">
+        <div id="g-meta"></div>
+        <p class="nota">${meta.faltamCent > 0
+          ? `Faltam <strong>${moedaRedonda(meta.faltamCent)}</strong> para cobrir ${meta.meses} meses de gasto.`
+          : `Você já tem mais do que os ${meta.meses} meses de gasto que definiu como meta.`}
+          A meta acompanha sua queima: se o gasto sobe, o alvo sobe junto.</p>
+      </div>`) : ''}
 
     ${secao(mesLongo(mes), `
       <div class="painel">
@@ -126,29 +229,37 @@ export function render(host) {
         <p class="nota">Dinheiro que entrou menos dinheiro que saiu, de verdade — sem depender
         de nenhuma categoria estar certa. Barra para baixo = mês que consumiu reserva.</p>
       </div>`, 'Caixa real, mês a mês')}
-
-    ${futuros.length ? secao('Já comprometido', `
-      <div class="painel">
-        <table class="tabela">
-          <tr><th>Fatura</th><th>Parcelas</th><th>Valor</th></tr>
-          ${futuros.map((x) => `<tr><td>${mesBR(x.mes)}</td><td>${x.n}</td>
-            <td><strong>${moeda(x.cent)}</strong></td></tr>`).join('')}
-        </table>
-        <p class="nota">Parcelas do cartão já lançadas para a frente. Não são gasto deste mês,
-        mas já estão reservadas do seu futuro.</p>
-      </div>`) : ''}
   `;
 
-  // sparkline do patrimônio (12 meses)
   const ultimos = serie.slice(-12);
   if (ultimos.length > 1) {
     sparkline($('#spark-pat', host), ultimos.map((s) => s.patrimonio), { largura: 120, altura: 30 });
   }
 
-  const sobras = serie.slice(-12);
+  proporcao($('#g-destino', host), {
+    segmentos: [
+      { nome: 'Gastos', valor: destino.gastos, cor: '--serie-2' },
+      { nome: 'Guardado', valor: destino.guardado, cor: '--serie-3' },
+      { nome: 'Parado na conta', valor: Math.max(0, destino.livre), cor: '--serie-1' },
+    ],
+    fmt: moedaRedonda,
+    rotuloIni: 'R$ 0',
+    rotuloFim: moedaRedonda(Math.max(destino.entrada, destino.gastos + destino.guardado)),
+  });
+
+  if (meta) {
+    medidor($('#g-meta', host), {
+      valor: meta.atualCent,
+      meta: meta.alvoCent,
+      fmt: moedaRedonda,
+      rotulo: `Meta: ${meta.meses} meses de gasto`,
+      sufixo: 'da meta',
+    });
+  }
+
   barrasDivergentes($('#g-sobra', host), {
-    rotulos: sobras.map((s) => mesBR(s.mes)),
-    valores: sobras.map((s) => s.caixaLiquido),
+    rotulos: serie.slice(-12).map((s) => mesBR(s.mes)),
+    valores: serie.slice(-12).map((s) => s.caixaLiquido),
     fmt: moeda,
     fmtEixo: eixoMoeda,
   });
@@ -159,5 +270,18 @@ export function render(host) {
       irPara(a.rota, { aba: a.aba });
     });
   });
+
+  $$('[data-adiar]', host).forEach((b) => {
+    b.addEventListener('click', async () => {
+      const a = alertas[Number(b.dataset.adiar)];
+      const ate = new Date(Date.now() + DIAS_ADIAMENTO * 86400000).toISOString().slice(0, 10);
+      await salvarConfig({
+        alertasAdiados: { ...(estado.config.alertasAdiados || {}), [a.chave]: ate },
+      });
+      aviso(`Escondido por ${DIAS_ADIAMENTO} dias.`);
+      recarregar();
+    });
+  });
+
   ligarDicas(host);
 }

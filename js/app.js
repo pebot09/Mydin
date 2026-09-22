@@ -8,6 +8,7 @@ import * as fluxo from './views/fluxo.js';
 import * as tendencias from './views/tendencias.js';
 import * as ensino from './views/ensino.js';
 import * as dados from './views/dados.js';
+import { editarTransacao } from './views/dados.js';
 
 const ROTAS = {
   painel:     { nome: 'Hoje',       titulo: 'Hoje',       modulo: painel,     icone: icoCasa },
@@ -115,6 +116,11 @@ async function comecar() {
   montarNav();
   registrarNavegacao(irPara);
   registrarRecarga(recarregar);
+
+  // Adicionar um lançamento é a ação mais frequente: fica sempre ao alcance do polegar.
+  const acao = $('#acao-rapida');
+  acao.hidden = false;
+  acao.addEventListener('click', () => editarTransacao(null));
 
   const inicial = location.hash.replace('#', '');
   rotaAtual = ROTAS[inicial] ? inicial : 'painel';

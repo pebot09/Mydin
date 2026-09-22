@@ -143,6 +143,7 @@ export function render(host) {
   medidor($('#g-medidor', host), {
     valor: p.receitaCent, meta: p.potencialCent, fmt: moedaRedonda,
     rotulo: `${p.pagantes} de ${p.capacidade} vagas`,
+    sufixo: 'do potencial',
   });
 
   if (fluxo.length > 1) {

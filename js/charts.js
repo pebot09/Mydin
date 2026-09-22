@@ -428,9 +428,12 @@ export function sparkline(host, valores, opcoes = {}) {
 // ───────────────────────── Medidor (bullet) ─────────────────────────
 
 /** Progresso contra uma meta, com o número sempre escrito ao lado. */
-export function medidor(host, { valor, meta, fmt, rotulo }) {
+export function medidor(host, { valor, meta, fmt, rotulo, sufixo = 'do potencial' }) {
   host.innerHTML = '';
-  const pct = meta > 0 ? Math.min(100, (valor / meta) * 100) : 0;
+  // a barra satura em 100%, mas a porcentagem mostra o valor real:
+  // passar da meta é informação, não é um erro a esconder
+  const bruto = meta > 0 ? (valor / meta) * 100 : 0;
+  const largura = Math.max(0, Math.min(100, bruto));
   const d = document.createElement('div');
   d.className = 'medidor';
   d.innerHTML = `
@@ -438,8 +441,8 @@ export function medidor(host, { valor, meta, fmt, rotulo }) {
       <span>${rotulo}</span>
       <strong>${fmt(valor)} <span class="fraco">de ${fmt(meta)}</span></strong>
     </div>
-    <div class="medidor-trilho"><div class="medidor-barra" style="width:${pct}%"></div></div>
-    <div class="medidor-pct">${pct.toFixed(0)}% do potencial</div>`;
+    <div class="medidor-trilho"><div class="medidor-barra" style="width:${largura}%"></div></div>
+    <div class="medidor-pct">${bruto.toFixed(0)}% ${sufixo}</div>`;
   host.appendChild(d);
 }
 
@@ -448,4 +451,93 @@ export function legenda(series) {
   return `<div class="viz-legenda">${series.map((s) =>
     `<span class="viz-leg"><span class="viz-pt" style="background:var(${s.cor})"></span>${s.nome}</span>`
   ).join('')}</div>`;
+}
+
+// ───────────────────────── Barra de proporção ─────────────────────────
+
+/**
+ * Uma barra empilhada única que mostra, de uma vez, como um total se divide.
+ * Cada segmento é rotulado com nome, valor e porcentagem — a cor nunca carrega
+ * a informação sozinha (e no modo claro alguns tons não alcançam 3:1).
+ *
+ * spec: { segmentos: [{nome, valor, cor}], fmt, rotuloIni, rotuloFim }
+ */
+export function proporcao(host, spec) {
+  const segs = spec.segmentos.filter((s) => s.valor > 0);
+  const total = segs.reduce((a, s) => a + s.valor, 0);
+  if (!total) {
+    host.innerHTML = '<p class="mini">Sem movimento no período.</p>';
+    return;
+  }
+  host.innerHTML = `
+    <div class="prop">
+      <div class="prop-barra">
+        ${segs.map((s) => `<div class="prop-seg" style="width:${(s.valor / total) * 100}%;
+          background:var(${s.cor})" title="${s.nome}"></div>`).join('')}
+      </div>
+      ${spec.rotuloIni || spec.rotuloFim ? `<div class="prop-eixo">
+        <span>${spec.rotuloIni || ''}</span><span>${spec.rotuloFim || ''}</span></div>` : ''}
+      <div class="prop-itens">
+        ${segs.map((s) => `
+          <div class="prop-item">
+            <span class="viz-pt" style="background:var(${s.cor})"></span>
+            <span class="prop-nome">${s.nome}</span>
+            <span class="prop-valor">${spec.fmt(s.valor)}</span>
+            <span class="prop-pct">${((s.valor / total) * 100).toFixed(1).replace('.', ',')}%</span>
+          </div>`).join('')}
+      </div>
+    </div>`;
+}
+
+const SLOTS = ['--serie-1', '--serie-2', '--serie-3', '--serie-4',
+  '--serie-5', '--serie-6', '--serie-7'];
+
+/**
+ * Composição de muitas categorias numa barra só. Acima de ~7 classes as cores
+ * deixam de se distinguir, então o excedente vira "Outros" — e continua
+ * acessível pelos números na lista abaixo.
+ *
+ * spec: { itens: [{rotulo, valor, chave}], fmt, maximo, aoTocar }
+ */
+export function composicao(host, spec) {
+  const max = spec.maximo || 6;
+  const ordenados = [...spec.itens].filter((i) => i.valor > 0).sort((a, b) => b.valor - a.valor);
+  const principais = ordenados.slice(0, max);
+  const resto = ordenados.slice(max);
+  const segs = principais.map((it, i) => ({ ...it, cor: SLOTS[i] }));
+  if (resto.length) {
+    segs.push({
+      rotulo: 'Outros (' + resto.length + ')',
+      valor: resto.reduce((a, i) => a + i.valor, 0),
+      cor: '--serie-outros',
+      chave: null,
+    });
+  }
+  const total = segs.reduce((a, s) => a + s.valor, 0);
+  if (!total) {
+    host.innerHTML = '<p class="mini">Nada classificado no período.</p>';
+    return;
+  }
+
+  host.innerHTML = `
+    <div class="prop">
+      <div class="prop-barra">
+        ${segs.map((s) => `<div class="prop-seg" style="width:${(s.valor / total) * 100}%;
+          background:var(${s.cor})" title="${s.rotulo}"></div>`).join('')}
+      </div>
+      <div class="comp-chips">
+        ${segs.map((s, i) => `
+          <button type="button" class="comp-chip" data-i="${i}"${s.chave ? '' : ' disabled'}>
+            <span class="viz-pt" style="background:var(${s.cor})"></span>
+            ${s.rotulo} <strong>${spec.fmt(s.valor)}</strong>
+          </button>`).join('')}
+      </div>
+    </div>`;
+
+  if (spec.aoTocar) {
+    host.querySelectorAll('.comp-chip').forEach((b) => {
+      const s = segs[Number(b.dataset.i)];
+      if (s.chave) b.addEventListener('click', () => spec.aoTocar(s));
+    });
+  }
 }

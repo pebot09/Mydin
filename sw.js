@@ -1,7 +1,7 @@
 // Service worker: guarda o app inteiro no aparelho para abrir offline.
 // Seus DADOS não passam por aqui — eles vivem no IndexedDB, nunca no cache.
 
-const VERSAO = 'mydin-v2.0.0';
+const VERSAO = 'mydin-v2.1.0';
 
 const ARQUIVOS = [
   './',
@@ -19,6 +19,7 @@ const ARQUIVOS = [
   './js/charts.js',
   './js/ui.js',
   './js/cadastro.js',
+  './js/previsao.js',
   './js/views/painel.js',
   './js/views/fluxo.js',
   './js/views/tendencias.js',

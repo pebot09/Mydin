@@ -5,7 +5,7 @@ import { estado, salvar, remover, novoId, salvarConfig, exportarTudo, importarTu
   apagarTudo, pessoa as buscarPessoa } from '../store.js';
 import { CATEGORIAS, CAT_POR_ID, TIPOS_PESSOA, nomeCategoria } from '../dominio.js';
 import { importarArquivos } from '../importar.js';
-import { reclassificar, normalizar } from '../classify.js';
+import { reclassificar, normalizar, chaveEstabelecimento } from '../classify.js';
 import { aplicarCadastro, buscarCadastroPublicado } from '../cadastro.js';
 import { moeda, moedaRedonda, dataBR, dataBRLonga, parseMoeda, plural, mesBR } from '../format.js';
 import { secao, folha, confirmar, aviso, recarregar, irPara, $, $$, esc, html, ligarDicas } from '../ui.js';
@@ -244,12 +244,6 @@ async function criarRegras(txs, categoria) {
   if (novas.length) await salvar('regras', novas);
 }
 
-/** Primeiras palavras do estabelecimento, normalizadas — boa impressão digital. */
-function chaveEstabelecimento(descricao) {
-  const n = normalizar(descricao).replace(/\s*-\s*parcela.*$/, '').trim();
-  return n.split(' ').slice(0, 2).join(' ');
-}
-
 // ───────────────────────── Pessoas ─────────────────────────
 
 function abaPessoas(host) {
@@ -371,7 +365,7 @@ function editarPessoa(id) {
 
 // ───────────────────────── Transação ─────────────────────────
 
-function editarTransacao(id) {
+export function editarTransacao(id) {
   const t = id ? estado.transacoes.find((x) => x.id === id) : null;
   const corpo = html(`
     <div>

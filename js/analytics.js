@@ -442,6 +442,68 @@ export function reconciliacao(n = 6) {
   }));
 }
 
+/**
+ * Para onde foi cada real que entrou no período: gasto, guardado, ou livre.
+ * Responde de uma vez a pergunta que uma lista de categorias não responde —
+ * "entrou tanto; e aí?".
+ */
+export function destinoDoQueEntrou(de, ate) {
+  const c = caixaReal(de, ate);
+  let guardado = 0;
+  for (const t of estado.transacoes) {
+    if (t.data < de || t.data > ate || !realizada(t)) continue;
+    if (t.conta === 'conta' && t.categoria === 'INT') guardado += -t.valorCent;
+  }
+  guardado = Math.max(0, guardado);
+  // o que sobrou parado na conta, sem ter sido gasto nem transferido
+  const livre = c.entrada - c.saida - guardado;
+  return { entrada: c.entrada, gastos: c.saida, guardado, livre };
+}
+
+/** Meses seguidos fechando no azul, e quantos dos últimos 6 foram positivos. */
+export function sequenciaPositiva(janela = 6) {
+  const serie = serieMensal().filter((s) => s.mes < mesAtual());
+  let seguidos = 0;
+  for (let i = serie.length - 1; i >= 0; i--) {
+    if (serie[i].caixaLiquido > 0) seguidos++; else break;
+  }
+  const ultimos = serie.slice(-janela);
+  return {
+    seguidos,
+    positivos: ultimos.filter((s) => s.caixaLiquido > 0).length,
+    de: ultimos.length,
+  };
+}
+
+/** Melhor e pior mês de cada medida, com o mês junto para dar contexto. */
+export function extremos() {
+  const serie = serieMensal().filter((s) => s.mes < mesAtual());
+  if (!serie.length) return null;
+  const por = (chave) => {
+    const ord = [...serie].sort((a, b) => a[chave] - b[chave]);
+    return { pior: ord[0], melhor: ord[ord.length - 1] };
+  };
+  return { caixa: por('caixaLiquido'), entrada: por('entradaReal'), saida: por('saidaReal') };
+}
+
+/**
+ * Meta de reserva em reais, derivada da meta de fôlego — sem cadastro nenhum:
+ * quantos meses você quer aguentar × quanto você queima por mês.
+ */
+export function metaReserva() {
+  const f = folego();
+  if (!f.burnCent) return null;
+  const alvoCent = f.burnCent * f.alvoMeses;
+  return {
+    alvoCent,
+    atualCent: f.patrimonioCent,
+    pct: alvoCent ? (f.patrimonioCent / alvoCent) * 100 : 0,
+    faltamCent: Math.max(0, alvoCent - f.patrimonioCent),
+    meses: f.alvoMeses,
+    burnCent: f.burnCent,
+  };
+}
+
 // ───────────────────────── Comparação e mudança ─────────────────────────
 
 /**
@@ -737,6 +799,12 @@ export function fluxoAlunos() {
 
 // ───────────────────────── Alertas ─────────────────────────
 
+/** Um alerta adiado some até esta data. */
+export function alertaAdiado(chave) {
+  const adiados = estado.config.alertasAdiados || {};
+  return adiados[chave] && adiados[chave] > hoje();
+}
+
 /** Tudo que pede uma ação sua, em ordem de urgência. */
 export function alertas() {
   const out = [];
@@ -745,6 +813,7 @@ export function alertas() {
   const revisar = estado.transacoes.filter((t) => t.status === 'revisar').length;
   if (revisar) {
     out.push({
+      chave: 'revisar',
       nivel: 'atencao',
       titulo: revisar + (revisar === 1 ? ' lançamento para revisar' : ' lançamentos para revisar'),
       texto: 'Enquanto não forem classificados, os relatórios ficam incompletos.',
@@ -755,6 +824,7 @@ export function alertas() {
   const naoPagaram = alunosSemPagamento(mes);
   if (naoPagaram.length) {
     out.push({
+      chave: 'sem-pagar:' + mes,
       nivel: 'atencao',
       titulo: naoPagaram.length + (naoPagaram.length === 1 ? ' aluno sem pagar' : ' alunos sem pagar'),
       texto: naoPagaram.map((a) => a.nome).join(', '),
@@ -764,6 +834,7 @@ export function alertas() {
 
   if (!temAncora()) {
     out.push({
+      chave: 'sem-ancora',
       nivel: 'grave',
       titulo: 'Patrimônio sem âncora',
       texto: 'Importe um OFX da conta (ou informe o saldo) para o patrimônio ser real.',
@@ -774,6 +845,7 @@ export function alertas() {
   const f = folego();
   if (f.meses !== null && f.meses < f.alvoMeses) {
     out.push({
+      chave: 'folego:' + mes,
       nivel: f.meses < 3 ? 'grave' : 'atencao',
       titulo: 'Fôlego abaixo da meta',
       texto: 'Sua reserva cobre ' + f.meses.toFixed(1).replace('.', ',')
@@ -785,6 +857,7 @@ export function alertas() {
   const r = ritmoDoMes();
   if (r.deltaPct !== null && r.deltaPct > 20) {
     out.push({
+      chave: 'ritmo:' + mes,
       nivel: 'atencao',
       titulo: 'Gasto acima do ritmo',
       texto: 'Você já gastou ' + Math.round(r.deltaPct) + '% a mais que a média para este dia do mês.',
@@ -795,6 +868,7 @@ export function alertas() {
   const semCat = naoCategorizadas(mesMenos(mes, 2) + '-01', hoje());
   if (semCat.length >= 5) {
     out.push({
+      chave: 'sem-categoria',
       nivel: 'leve',
       titulo: semCat.length + ' saídas sem categoria',
       texto: 'Nos últimos 3 meses. Elas não entram em nenhum gráfico de gasto.',
@@ -803,5 +877,7 @@ export function alertas() {
   }
 
   const ordem = { grave: 0, atencao: 1, leve: 2 };
-  return out.sort((a, b) => ordem[a.nivel] - ordem[b.nivel]);
+  return out
+    .filter((a) => !alertaAdiado(a.chave))
+    .sort((a, b) => ordem[a.nivel] - ordem[b.nivel]);
 }

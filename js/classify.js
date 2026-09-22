@@ -24,6 +24,16 @@ export const PISO_ALUNO_CENT = 18000;   // R$ 180
 const CARIDADE_CENT = 1000;             // saída < R$ 10 para pessoa física
 const GERAL_CENT = 10000;               // avulso / amigo até R$ 100
 
+/**
+ * Impressão digital de um estabelecimento de cartão: as duas primeiras
+ * palavras normalizadas, sem o sufixo de parcela. "IFD*IFOOD SAO PAULO" e
+ * "IFD*IFOOD RIO - Parcela 2/3" caem na mesma chave.
+ */
+export function chaveEstabelecimento(descricao) {
+  const n = normalizar(descricao).replace(/\s*-\s*parcela.*$/, '').trim();
+  return n.split(' ').slice(0, 2).join(' ');
+}
+
 /** Minúsculas, sem acento, espaços normalizados. */
 export function normalizar(s) {
   return (s || '')

@@ -69,4 +69,5 @@ export const CONFIG_PADRAO = {
   saldoPoupancaData: '',
   diaLimiteMensalidade: 12,
   reservaAlvoMeses: 6,      // meta de fôlego
+  alertasAdiados: {},       // { chave: 'AAAA-MM-DD' } — alerta some até essa data
 };

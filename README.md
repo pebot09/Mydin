@@ -34,20 +34,36 @@ Na primeira vez, faça isto dentro do app, em **Dados**:
 ## As cinco telas
 
 ### Hoje — estou bem?
+- Abre com **a conclusão em uma frase**: quanto entrou, quanto saiu, quanto sobrou
+  e quantos meses a sua reserva cobre. Os números vêm depois.
 - **Patrimônio** (conta + poupança) e a variação do mês.
 - **Fôlego**: quantos meses a reserva sustenta o seu ritmo de gasto se a receita parar.
 - **Taxa de poupança**: quanto de cada R$ 100 que entram realmente sobra.
 - **Ritmo do mês**: o gasto até hoje comparado ao mesmo dia dos meses anteriores,
   com a projeção de fechamento — dá para corrigir a rota antes do mês acabar.
-- **Alertas acionáveis**: quem não pagou, o que falta revisar, parcelas já comprometidas.
+- **Próximos 30 dias**: agenda do que já está lançado (parcelas de cartão) e do que
+  costuma cair (mensalidade, aluguel, terapia, assinatura), com o que está atrasado.
+  Tudo inferido do extrato, sem cadastrar nada.
+- **Para onde foi o que entrou**: uma barra só dividindo cada real que chegou entre
+  gasto, guardado e parado na conta.
+- **Reserva**: progresso contra a meta em reais, derivada do fôlego — se a sua queima
+  sobe, o alvo sobe junto. Sem cadastro de objetivo.
+- **Alertas acionáveis**, com *Agora não* para adiar por 14 dias o que você já decidiu ignorar.
 
 ### Fluxo — de onde vem, para onde vai
-- Entrou × saiu mês a mês, em caixa real.
+- Entrou × saiu mês a mês, em caixa real, com **média diária** de gasto.
+- **Composição** em uma barra: as seis maiores categorias e o resto em "Outros"
+  (acima disso as cores deixam de se distinguir).
 - Gasto por categoria **com a variação contra o período anterior** — responde
-  *o que mudou*, que é o que um total sozinho nunca responde.
+  *o que mudou*, que é o que um total sozinho nunca responde. A janela anterior é
+  deslocada em meses, não em dias, para que despesa fixa não "salte 50%" sozinha.
+- **Compromissos que se repetem**: o piso do seu mês, detectado pela repetição do
+  extrato, separando o que é agenda do que é hábito — e quanto das miudezas
+  (cobranças até R$ 120) some sem você ver.
 - **Ponto de equilíbrio**: quantos alunos pagantes cobrem o custo fixo e o custo total.
 - **Concentração da receita**: quanto do seu dinheiro depende de uma pessoa só.
   Concentração alta é risco.
+- Períodos prontos (mês, 3, 6, 12 meses, tudo) ou **intervalo personalizado**.
 - Toque numa categoria para ver os lançamentos por trás dela.
 
 ### Tendências — para onde isso aponta
@@ -55,6 +71,8 @@ Na primeira vez, faça isto dentro do app, em **Dados**:
 - Entradas e saídas em **média móvel de 3 meses** (tira o ruído do mês atípico).
 - **Sazonalidade**: a média por mês do calendário, para reservar caixa antes do vale.
 - **Anomalias**: lançamentos muito acima da mediana da própria categoria.
+- **O histórico em números**: sequência de meses no azul, melhor e pior mês com o
+  contexto de cada um, e quanto sobrou no total.
 - **Ano contra ano** e a **reconciliação** (abaixo).
 
 ### Ensino — a base do negócio
@@ -84,6 +102,22 @@ o app mostra as duas coisas lado a lado e, de propósito, mostra também a difer
 a tela de Tendências tem uma **reconciliação** entre a sobra contábil e a variação
 real de patrimônio. Diferença grande quer dizer *falta classificar*, não *você
 empobreceu*.
+
+## Como o app adivinha o que vem
+
+Nada de cadastrar conta a pagar. O app agrupa os lançamentos por origem (a pessoa,
+pelo CPF mascarado; ou o estabelecimento do cartão) e chama de **compromisso** o que
+cumpre três condições: aparece em pelo menos 3 meses da janela, cai **uma vez por
+mês** e sempre **por volta do mesmo dia**.
+
+Essa última parte é o que separa agenda de hábito. Mercado e aplicativo de transporte
+se repetem todo mês, mas caem oito vezes em dias espalhados — são gasto habitual, não
+compromisso, e ficam fora da agenda (continuam no gasto por categoria). Aluguel,
+terapia, mensalidade e assinatura caem uma vez, sempre na mesma data, e entram.
+
+O que já está lançado com data futura tem prioridade sobre a previsão, para a mesma
+cobrança não aparecer duas vezes. Cada item mostra se é *já lançado*, *previsto* ou
+*atrasado*.
 
 ## Regras do negócio embutidas
 
@@ -151,6 +185,7 @@ js/
   classify.js         motor de categorização
   importar.js         importação e ancoragem do saldo
   cadastro.js         carga do cadastro inicial
+  previsao.js         recorrências detectadas e agenda do que vem
   analytics.js        todo o cálculo analítico
   charts.js           gráficos em SVG (sem biblioteca)
   ui.js               peças de interface
