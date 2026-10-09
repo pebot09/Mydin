@@ -1,5 +1,10 @@
 // Carga do cadastro que você já mapeou: alunos, clientes, contatos fixos e regras.
 //
+// O arquivo NÃO é publicado junto com o app: ele tem nome e CPF mascarado de
+// outras pessoas, e um site estático é público por definição. Você escolhe o
+// arquivo uma vez, a partir do próprio aparelho, e o cadastro passa a viver
+// no IndexedDB local.
+//
 // Idempotente: rodar de novo não duplica. A identidade é o CPF mascarado; quando
 // não há CPF, casa pelo nome. Depois de carregar, o app reavalia os lançamentos
 // para que os vínculos valham retroativamente.
@@ -81,11 +86,4 @@ export async function aplicarCadastro(dados) {
   if (r.alterados.length) await salvar('transacoes', r.alterados);
   conta.reclassificados = r.alterados.length;
   return conta;
-}
-
-/** Busca o arquivo que veio junto com o app, se ainda estiver publicado. */
-export async function buscarCadastroPublicado() {
-  const resp = await fetch('dados-iniciais.json', { cache: 'no-store' });
-  if (!resp.ok) throw new Error('não encontrado');
-  return resp.json();
 }

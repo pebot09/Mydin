@@ -14,3 +14,7 @@ backups/
 node_modules/
 .env
 *.local
+
+# Cadastro pessoal — fica no SEU aparelho, nunca no repositório
+dados-iniciais.json
+meu-cadastro*.json

@@ -6,7 +6,7 @@ import { estado, salvar, remover, novoId, salvarConfig, exportarTudo, importarTu
 import { CATEGORIAS, CAT_POR_ID, TIPOS_PESSOA, nomeCategoria } from '../dominio.js';
 import { importarArquivos } from '../importar.js';
 import { reclassificar, normalizar, chaveEstabelecimento } from '../classify.js';
-import { aplicarCadastro, buscarCadastroPublicado } from '../cadastro.js';
+import { aplicarCadastro } from '../cadastro.js';
 import { moeda, moedaRedonda, dataBR, dataBRLonga, parseMoeda, plural, mesBR } from '../format.js';
 import { secao, folha, confirmar, aviso, recarregar, irPara, $, $$, esc, html, ligarDicas } from '../ui.js';
 
@@ -512,18 +512,18 @@ function abaAjustes(host) {
 
     ${secao('Cadastro inicial', `
       <div class="painel">
-        <p class="folha-texto">Carrega de uma vez os alunos, clientes de música, contatos fixos
+        <p class="folha-texto">Traz de uma vez os alunos, clientes de música, contatos fixos
         (moradia, estúdio, terapia, ateliê), vendedores de medicinas e as pessoas multi-relação
-        que você já mapeou. Casa por CPF mascarado e <strong>não duplica</strong> se você clicar
+        que você já mapeou. Casa por CPF mascarado e <strong>não duplica</strong> se você fizer
         de novo — turma e cota que você já ajustou ficam como estão.</p>
-        <button class="botao neutro" type="button" id="carregar-cadastro">Carregar meu cadastro</button>
-        <label class="arquivo" style="margin-top:12px">
+        <label class="arquivo">
           <input type="file" id="f-cadastro" accept=".json,application/json">
-          <strong>…ou escolher o arquivo</strong>
-          <span>dados-iniciais.json</span>
+          <strong>Escolher o arquivo do cadastro</strong>
+          <span>meu-cadastro-mydin.json</span>
         </label>
-        <p class="nota">Depois de carregar uma vez, o cadastro fica guardado no aparelho —
-        o arquivo não é mais necessário.</p>
+        <p class="nota">O arquivo tem nome e CPF de outras pessoas, então ele <strong>não vem
+        junto com o app</strong> — fica com você. Depois de carregar uma vez, o cadastro passa a
+        viver neste aparelho e o arquivo não é mais necessário.</p>
       </div>`)}
 
     ${secao('Backup', `
@@ -603,14 +603,6 @@ function abaAjustes(host) {
       + `${c.reclassificados} lançamentos reavaliados.`);
     recarregar();
   }
-
-  $('#carregar-cadastro', host).addEventListener('click', async () => {
-    try {
-      await aplicar(await buscarCadastroPublicado());
-    } catch (err) {
-      aviso('Arquivo não está no servidor — escolha-o abaixo.', 'erro');
-    }
-  });
 
   $('#f-cadastro', host).addEventListener('change', async (e) => {
     const file = e.target.files[0];

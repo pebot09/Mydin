@@ -24,7 +24,7 @@ Na primeira vez, faça isto dentro do app, em **Dados**:
 | Aba | O que fazer |
 |---|---|
 | **Ajustes** | Informe o saldo da poupança/investimentos e seu nome completo como aparece no banco. |
-| **Cadastro inicial** | Toque em *Carregar meu cadastro* — traz alunos, clientes, contatos fixos e regras de uma vez. |
+| **Cadastro inicial** | Escolha o arquivo `meu-cadastro-mydin.json` — traz alunos, clientes, contatos fixos e regras de uma vez. |
 | **Importar** | Escolha os arquivos **OFX** do Nubank (conta e faturas). Pode mandar vários juntos. |
 | **Revisar** | O que sobrar sem classificação, resolva em lote. O app aprende com cada escolha. |
 | **Ensino** | Atribua a **turma** de cada aluno (o cadastro vem sem turma). |
@@ -145,20 +145,18 @@ O app é um site estático — não tem backend, não tem build, não tem depend
 Qualquer hospedagem de arquivos serve. Os caminhos são todos relativos, então
 funciona na raiz ou em subpasta.
 
-**GitHub Pages:** *Settings → Pages → Deploy from a branch → `main` / `/ (root)`*.
+**GitHub Pages:** *Settings → Pages → Deploy from a branch → o branch do app / `/ (root)`*.
 O endereço fica `https://<usuário>.github.io/<repo>/`.
 
-> ⚠️ **Antes de tornar o repositório público**, apague o `dados-iniciais.json` — ele
-> contém nomes e CPFs mascarados de alunos e clientes. Você só precisa dele uma vez:
-> depois de tocar em *Carregar meu cadastro*, tudo já está salvo no aparelho.
-> ```bash
-> git rm dados-iniciais.json && git commit -m "Remove cadastro do repositório público"
-> ```
-> Se preferir manter o repositório privado, use **Cloudflare Pages** ou **Netlify** —
-> ambos publicam de repositório privado no plano gratuito.
+**Nenhum dado pessoal mora neste repositório.** Nem os seus lançamentos, nem o
+cadastro de alunos e clientes. Um site estático é público por definição — qualquer
+arquivo publicado junto com ele é acessível por URL — então o cadastro (que tem nome
+e CPF mascarado de outras pessoas) fica fora: você o carrega uma vez, de um arquivo
+no próprio aparelho, em *Dados → Ajustes → Cadastro inicial*.
 
-Os seus lançamentos **nunca** vão para a hospedagem em nenhum dos casos: eles só
-existem no IndexedDB do seu celular.
+Por isso o repositório pode ser público sem expor ninguém. Se ainda assim você
+preferir mantê-lo privado, **Cloudflare Pages** e **Netlify** publicam de repositório
+privado no plano gratuito (o GitHub Pages exige plano pago para isso).
 
 ## Onde os dados moram (e como não perdê-los)
 
